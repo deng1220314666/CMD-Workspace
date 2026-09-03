@@ -1,0 +1,10 @@
+node_modules/
+.stale-node-modules-*/
+dist/
+release/
+.tools/
+.pnpm-store/
+.env
+*.log
+playwright-report/
+test-results/

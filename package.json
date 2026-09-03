@@ -1,0 +1,80 @@
+{
+  "name": "cmd-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Windows-first project terminal workspace",
+  "author": "CMD Workspace contributors",
+  "main": "dist/main/main.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"tsc -p tsconfig.electron.json --watch --preserveWatchOutput\" \"wait-on tcp:127.0.0.1:5173 file:dist/main/main.js file:dist/preload/preload.js && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "clean": "rimraf dist release",
+    "lint": "eslint . --max-warnings 0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.electron.json --noEmit",
+    "test": "vitest run --config vitest.config.ts",
+    "smoke:pty": "cross-env ELECTRON_RUN_AS_NODE=1 electron tests/runtime-smoke.cjs",
+    "smoke:manager": "cross-env ELECTRON_RUN_AS_NODE=1 electron tests/terminal-manager-smoke.cjs",
+    "smoke:db": "cross-env ELECTRON_RUN_AS_NODE=1 electron tests/database-smoke.cjs",
+    "db:create": "cross-env ELECTRON_RUN_AS_NODE=1 electron tests/create-development-database.cjs",
+    "db:generate": "drizzle-kit generate",
+    "build": "pnpm clean && tsc -p tsconfig.electron.json && vite build",
+    "package": "pnpm build && electron-builder --dir"
+  },
+  "dependencies": {
+    "@xterm/addon-fit": "0.10.0",
+    "@xterm/xterm": "5.5.0",
+    "dotenv": "16.6.1",
+    "drizzle-orm": "^0.45.2",
+    "node-pty": "1.1.0",
+    "pg": "^8.23.0",
+    "react": "19.1.1",
+    "react-dom": "19.1.1",
+    "zod": "4.1.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.34.0",
+    "@types/node": "24.3.0",
+    "@types/pg": "^8.23.1",
+    "@types/react": "19.1.12",
+    "@types/react-dom": "19.1.9",
+    "@vitejs/plugin-react": "5.0.2",
+    "concurrently": "9.2.1",
+    "cross-env": "10.0.0",
+    "drizzle-kit": "^0.31.10",
+    "electron": "41.10.5",
+    "electron-builder": "26.0.12",
+    "eslint": "9.34.0",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "eslint-plugin-react-refresh": "0.4.20",
+    "globals": "16.3.0",
+    "prettier": "3.6.2",
+    "rimraf": "6.0.1",
+    "typescript": "5.9.2",
+    "typescript-eslint": "8.41.0",
+    "vite": "7.1.3",
+    "vitest": "3.2.4",
+    "wait-on": "8.0.4"
+  },
+  "build": {
+    "appId": "dev.cmdworkspace.app",
+    "productName": "CMD Workspace",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "drizzle/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/node-pty/**/*"
+    ],
+    "npmRebuild": false,
+    "win": {
+      "target": "dir",
+      "signAndEditExecutable": false
+    }
+  },
+  "packageManager": "pnpm@10.15.0"
+}

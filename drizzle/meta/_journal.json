@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1788345600000,
+      "tag": "0000_m3_persistence",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788345660000,
+      "tag": "0001_enforce_task_profile_ownership",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788401792942,
+      "tag": "0002_project_annotations",
+      "breakpoints": true
+    }
+  ]
+}

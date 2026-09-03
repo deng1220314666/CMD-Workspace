@@ -1,0 +1,8 @@
+.agents/
+.tools/
+.pnpm-store/
+.stale-node-modules-*/
+node_modules/
+dist/
+release/
+pnpm-lock.yaml
