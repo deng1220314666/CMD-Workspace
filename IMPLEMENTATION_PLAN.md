@@ -126,3 +126,62 @@ Acceptance checks:
 - [x] Expose validated main-process persistence IPC for updating project annotations.
 - [x] Add an accessible sidebar editor while retaining the real folder name and path.
 - [x] Restore annotations after restart and verify migration, persistence, UI state, static checks, database smoke, and packaging.
+
+## Active delivery: terminal workspace UX and safe copy
+
+Scope: refine the existing local-project command-center interface and add terminal copy interactions that never steal plain `Ctrl+C` from the running PTY.
+
+Acceptance checks:
+
+- [x] Copy selected terminal text with `Ctrl+C`, `Ctrl+Shift+C`, `Ctrl+Insert`, the terminal copy button, and the selection context menu.
+- [x] Keep plain `Ctrl+C` routed to the PTY when there is no selection so interactive CLIs receive their interrupt signal.
+- [x] Surface copy availability and feedback through a narrow clipboard capability without exposing raw Node.js access.
+- [x] Improve workspace hierarchy, responsive behavior, keyboard focus, terminal density, and actionable empty/error states.
+- [x] Preserve terminal runtime IDs and PIDs while switching projects and while attaching/detaching terminal views.
+- [x] Pass format, lint, typecheck, unit tests, production build, packaging, and applicable ConPTY lifecycle smoke tests.
+
+## Active delivery: workspace UI phase 1
+
+Scope: refine only the project sidebar, terminal tab strip, and renderer layout. Preserve all PTY, database, IPC, preload, and process-management behavior.
+
+Acceptance checks:
+
+- [x] Use a compact resizable 180-320px project sidebar with a 240px default and locally persisted width.
+- [x] Keep terminal views mounted while switching projects or tabs so xterm viewport state is retained.
+- [x] Use a 36px accessible terminal tab strip with shell and text status cues, keyboard navigation, and labelled actions.
+- [x] Keep the main workspace usable at 1440x900 and 1024x768 without oversized headings, gradients, or unnecessary chrome.
+- [x] Pass lint and type checking and review the diff for changes outside the renderer UI scope.
+
+## Completed delivery: terminal workspace UI phase 2
+
+Scope: add renderer-owned horizontal and vertical terminal splits, resizable panes, safe shell selection, terminal tools, and keyboard shortcuts while preserving stable PTY/runtime ownership. Reuse existing terminal-profile columns; do not add a database migration.
+
+Acceptance checks:
+
+- [x] Create horizontal and vertical splits with `react-resizable-panels`, persist renderer layout locally, and resize each visible xterm through the existing fit/resize path.
+- [x] Keep one stable xterm instance per runtime across project, tab, pane, and layout changes; only restart replaces its view generation.
+- [x] Create PowerShell or Command Prompt profiles using validated shell identifiers mapped to fixed executables and argument arrays.
+- [x] Rename terminals and show starting, running, exited, and failed states with text and semantic color in tabs and panes.
+- [x] Route every live-terminal close through the existing graceful/force confirmation flow and PID check.
+- [x] Support terminal find, copy, paste, clear, split, focus, tab navigation, rename, new-terminal, and close shortcuts without stealing plain Ctrl+C from a running PTY.
+- [x] Pass format, lint, typecheck, unit tests, production build, applicable ConPTY lifecycle smoke tests, and diff/security review.
+
+## Completed fix: compact viewport fit
+
+Scope: keep the workbench fully contained by the Electron viewport, compact the CMD Workspace and terminal-pane title typography, and prevent idle status text from wrapping or creating scrollbars.
+
+Acceptance checks:
+
+- [x] The root workspace and workbench can shrink within the viewport without clipping the terminal status bar.
+- [x] The application window defaults to 1280×820 and enforces the 1024×768 desktop minimum.
+- [x] Terminal pane titles remain single-line and the idle state uses the compact `Idle` label.
+
+## Completed fix: compact new-terminal action
+
+Scope: replace the persistent Shell selector with a compact split-button while retaining explicit PowerShell and Command Prompt creation.
+
+Acceptance checks:
+
+- [x] Clicking `+` immediately creates a terminal using the remembered Shell.
+- [x] The adjacent arrow opens a keyboard-accessible menu whose choices immediately create the selected Shell.
+- [x] Existing terminals, PTYs, shortcuts, and split creation behavior remain unchanged.

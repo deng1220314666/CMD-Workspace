@@ -188,6 +188,8 @@ export class PersistenceRepository {
     projectId: string
     displayName: string
     workingDirectory: string
+    executable: string
+    arguments: string[]
   }): Promise<PersistedTerminalProfile> {
     try {
       return await this.db.transaction(async (transaction) => {
@@ -200,6 +202,8 @@ export class PersistenceRepository {
           .values({
             projectId: input.projectId,
             displayName: input.displayName,
+            executable: input.executable ?? 'powershell.exe',
+            arguments: input.arguments ?? [],
             workingDirectory: input.workingDirectory,
             orderIndex: (order[0]?.value ?? -1) + 1,
           })

@@ -2,10 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   AppInfo,
   TerminalCloseMode,
-  TerminalStatus,
+  TerminalShell,
   TerminalStatusEvent,
 } from '../../shared/terminal'
-import { TerminalView } from './TerminalView'
+import { ProjectSidebar } from './components/ProjectSidebar'
+import { TerminalWorkspace } from './components/TerminalWorkspace'
+import { isLiveStatus } from './components/terminal-status'
+import { WorkspaceLayout } from './components/WorkspaceLayout'
 import {
   addProfile,
   addProject,
@@ -35,9 +38,6 @@ interface ProjectEditor {
   remarkName: string
   purpose: string
 }
-
-const isLive = (status: TerminalStatus | undefined) =>
-  status === 'starting' || status === 'running' || status === 'stopping'
 
 export function App() {
   const [workspace, setWorkspace] = useState(emptyWorkspace)
@@ -120,28 +120,37 @@ export function App() {
       cwd: tab.cwd,
       cols: 100,
       rows: 30,
+      shell: tab.shell,
     })
     setWorkspace((current) => attachRuntime(current, tab.profileId, runtime))
   }
 
-  const createTerminal = async (project: WorkspaceProject) => {
+  const createTerminal = async (
+    project: WorkspaceProject,
+    shell: TerminalShell = 'powershell',
+    select = true,
+  ): Promise<string | null> => {
     setBusy(true)
     setError(null)
     try {
       const profile = await window.cmdWorkspace.persistence.createProfile({
         projectId: project.projectId,
-        displayName: `PowerShell ${project.terminals.length + 1}`,
+        displayName: `${shell === 'cmd' ? 'Command Prompt' : 'PowerShell'} ${project.terminals.length + 1}`,
         workingDirectory: project.path,
+        shell,
       })
-      setWorkspace((current) => addProfile(current, profile))
+      setWorkspace((current) => addProfile(current, profile, null, select))
       await startTerminal({
         profileId: profile.profileId,
         title: profile.displayName,
         cwd: profile.workingDirectory,
+        shell,
         runtime: null,
       })
+      return profile.profileId
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
+      return null
     } finally {
       setBusy(false)
     }
@@ -158,13 +167,16 @@ export function App() {
       )
       setWorkspace((current) => addProject(current, imported))
       if (!existing)
-        await createTerminal({
-          ...imported,
-          remarkName: null,
-          purpose: null,
-          terminals: [],
-          activeProfileId: null,
-        })
+        await createTerminal(
+          {
+            ...imported,
+            remarkName: null,
+            purpose: null,
+            terminals: [],
+            activeProfileId: null,
+          },
+          'powershell',
+        )
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason))
     } finally {
@@ -201,7 +213,7 @@ export function App() {
   }
 
   const requestClose = (projectId: string, tab: TerminalTab) => {
-    if (isLive(tab.runtime?.status))
+    if (isLiveStatus(tab.runtime?.status))
       setPendingAction({ kind: 'close', projectId, tab })
     else void performClose(projectId, tab, 'graceful')
   }
@@ -230,7 +242,7 @@ export function App() {
   }
 
   const requestRestart = (projectId: string, tab: TerminalTab) => {
-    if (isLive(tab.runtime?.status))
+    if (isLiveStatus(tab.runtime?.status))
       setPendingAction({ kind: 'restart', projectId, tab })
     else void performRestart(tab)
   }
@@ -308,84 +320,28 @@ export function App() {
   }
 
   return (
-    <main className="workspace-shell">
-      <aside className="project-sidebar">
-        <header className="sidebar-header">
-          <div className="brand-mark" aria-hidden="true">
-            CW
-          </div>
-          <div>
-            <strong>CMD Workspace</strong>
-            <span>Persistent local projects</span>
-          </div>
-        </header>
-        <div className="project-list" aria-label="Imported projects">
-          {workspace.projects.map((project) => {
-            const running = project.terminals.filter((tab) =>
-              isLive(tab.runtime?.status),
-            ).length
-            return (
-              <div
-                key={project.projectId}
-                className={`project-row-shell ${project.projectId === workspace.activeProjectId ? 'active' : ''}`}
-              >
-                <button
-                  className="project-row"
-                  title={`${project.name}\n${project.path}`}
-                  onClick={() =>
-                    setWorkspace((current) =>
-                      selectProject(current, project.projectId),
-                    )
-                  }
-                >
-                  <span className="project-glyph">
-                    {(project.remarkName ?? project.name)
-                      .slice(0, 1)
-                      .toUpperCase()}
-                  </span>
-                  <span className="project-copy">
-                    <strong>{project.remarkName ?? project.name}</strong>
-                    <small>{project.purpose ?? project.name}</small>
-                  </span>
-                  <span
-                    className="running-count"
-                    title={`${running} live terminals`}
-                  >
-                    {running}
-                  </span>
-                </button>
-                <button
-                  className="project-edit-button"
-                  aria-label={`Edit notes for ${project.remarkName ?? project.name}`}
-                  title="Edit project notes"
-                  onClick={() =>
-                    setProjectEditor({
-                      projectId: project.projectId,
-                      remarkName: project.remarkName ?? '',
-                      purpose: project.purpose ?? '',
-                    })
-                  }
-                >
-                  ✎
-                </button>
-              </div>
-            )
-          })}
-        </div>
-        <button
-          className="import-button"
-          onClick={() => void importProject()}
-          disabled={busy}
-        >
-          + Import project
-        </button>
-        <footer className="sidebar-footer">
-          {appInfo?.platform === 'win32'
-            ? 'Windows / ConPTY / PostgreSQL'
-            : appInfo?.platform}
-        </footer>
-      </aside>
-
+    <WorkspaceLayout
+      sidebar={
+        <ProjectSidebar
+          projects={workspace.projects}
+          activeProjectId={workspace.activeProjectId}
+          hydrated={hydrated}
+          busy={busy}
+          platform={appInfo?.platform}
+          onSelectProject={(projectId) =>
+            setWorkspace((current) => selectProject(current, projectId))
+          }
+          onEditProject={(project) =>
+            setProjectEditor({
+              projectId: project.projectId,
+              remarkName: project.remarkName ?? '',
+              purpose: project.purpose ?? '',
+            })
+          }
+          onImportProject={() => void importProject()}
+        />
+      }
+    >
       <section className="workbench">
         {(appInfo?.databaseError ?? appInfo?.environmentError) && (
           <div className="environment-note">
@@ -436,168 +392,53 @@ export function App() {
                 <p>{activeProject.path}</p>
               </div>
               <div className="session-readout">
-                <span>PID</span>
-                <strong>{activeTab?.runtime?.pid ?? '—'}</strong>
-                <span>STATE</span>
-                <strong
-                  className={`state-${activeTab?.runtime?.status ?? 'idle'}`}
-                >
-                  {activeTab?.runtime?.status ?? 'idle'}
-                </strong>
+                <div>
+                  <span>Process</span>
+                  <strong>PID {activeTab?.runtime?.pid ?? '—'}</strong>
+                </div>
+                <div>
+                  <span>Status</span>
+                  <strong
+                    className={`state-${activeTab?.runtime?.status ?? 'idle'}`}
+                  >
+                    <i aria-hidden="true" />
+                    {activeTab?.runtime?.status ?? 'idle'}
+                  </strong>
+                </div>
               </div>
             </header>
 
-            <div className="terminal-deck">
-              <div
-                className="tab-strip"
-                role="tablist"
-                aria-label={`${activeProject.name} terminals`}
-              >
-                {activeProject.terminals.map((tab, index) => (
-                  <div
-                    key={tab.profileId}
-                    className={`terminal-tab ${tab.profileId === activeProject.activeProfileId ? 'active' : ''}`}
-                  >
-                    <button
-                      className="tab-select"
-                      role="tab"
-                      aria-selected={
-                        tab.profileId === activeProject.activeProfileId
-                      }
-                      onClick={() =>
-                        setWorkspace((current) =>
-                          selectTerminal(
-                            current,
-                            activeProject.projectId,
-                            tab.profileId,
-                          ),
-                        )
-                      }
-                      onDoubleClick={() => {
-                        setDraftTitle(tab.title)
-                        setEditingProfileId(tab.profileId)
-                      }}
-                    >
-                      <span
-                        className={`status-dot state-${tab.runtime?.status ?? 'idle'}`}
-                      />
-                      {editingProfileId === tab.profileId ? (
-                        <input
-                          autoFocus
-                          value={draftTitle}
-                          aria-label="Terminal name"
-                          onChange={(event) =>
-                            setDraftTitle(event.target.value)
-                          }
-                          onBlur={() =>
-                            void finishRename(
-                              activeProject.projectId,
-                              tab.profileId,
-                            )
-                          }
-                          onClick={(event) => event.stopPropagation()}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter')
-                              event.currentTarget.blur()
-                            if (event.key === 'Escape')
-                              setEditingProfileId(null)
-                          }}
-                        />
-                      ) : (
-                        <span>{tab.title}</span>
-                      )}
-                    </button>
-                    <div className="tab-actions">
-                      <button
-                        title="Move terminal left"
-                        disabled={index === 0}
-                        onClick={() => void persistMove(activeProject, tab, -1)}
-                      >
-                        ←
-                      </button>
-                      <button
-                        title="Move terminal right"
-                        disabled={index === activeProject.terminals.length - 1}
-                        onClick={() => void persistMove(activeProject, tab, 1)}
-                      >
-                        →
-                      </button>
-                      <button
-                        title="Close terminal"
-                        onClick={() =>
-                          requestClose(activeProject.projectId, tab)
-                        }
-                      >
-                        ×
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                <button
-                  className="new-terminal-button"
-                  title="New terminal"
-                  onClick={() => void createTerminal(activeProject)}
-                  disabled={busy}
-                >
-                  +
-                </button>
-              </div>
-
-              <div
-                className={`power-rail state-${activeTab?.runtime?.status ?? 'idle'}`}
-              >
-                <span />
-              </div>
-              <div className="terminal-toolbar">
-                <span>{activeTab?.cwd ?? 'No terminal selected'}</span>
-                {activeTab && (
-                  <button
-                    onClick={() =>
-                      requestRestart(activeProject.projectId, activeTab)
-                    }
-                    disabled={busy}
-                  >
-                    {activeTab.runtime ? 'Restart' : 'Start'}
-                  </button>
-                )}
-              </div>
-              <div className="terminal-stage">
-                {activeTab?.runtime ? (
-                  <TerminalView
-                    key={`${activeTab.runtime.terminalId}-${activeTab.runtime.pid ?? activeTab.runtime.status}`}
-                    terminalId={activeTab.runtime.terminalId}
-                    onError={reportError}
-                  />
-                ) : activeTab ? (
-                  <div className="empty-terminal">
-                    <strong>Profile restored — process not running</strong>
-                    <span>
-                      Stored PIDs are diagnostic only. Start this profile to
-                      create a new PTY.
-                    </span>
-                    <button onClick={() => void performRestart(activeTab)}>
-                      Start terminal
-                    </button>
-                  </div>
-                ) : (
-                  <div className="empty-terminal">
-                    <strong>No terminal in this project</strong>
-                    <span>
-                      Create a persistent profile to start PowerShell in{' '}
-                      {activeProject.path}.
-                    </span>
-                    <button onClick={() => void createTerminal(activeProject)}>
-                      New terminal
-                    </button>
-                  </div>
-                )}
-              </div>
-              <footer className="statusbar">
-                <span>UTF-8</span>
-                <span>xterm-256color</span>
-                <span>Profiles persist · PTYs stay in memory</span>
-              </footer>
-            </div>
+            <TerminalWorkspace
+              projects={workspace.projects}
+              project={activeProject}
+              busy={busy}
+              editingProfileId={editingProfileId}
+              draftTitle={draftTitle}
+              onSelect={(profileId) =>
+                setWorkspace((current) =>
+                  selectTerminal(current, activeProject.projectId, profileId),
+                )
+              }
+              onBeginRename={(tab) => {
+                setDraftTitle(tab.title)
+                setEditingProfileId(tab.profileId)
+              }}
+              onDraftTitleChange={setDraftTitle}
+              onFinishRename={(profileId) =>
+                void finishRename(activeProject.projectId, profileId)
+              }
+              onCancelRename={() => setEditingProfileId(null)}
+              onMove={(tab, offset) =>
+                void persistMove(activeProject, tab, offset)
+              }
+              onClose={(tab) => requestClose(activeProject.projectId, tab)}
+              onCreate={(shell, select) =>
+                createTerminal(activeProject, shell, select)
+              }
+              onStart={(tab) => void performRestart(tab)}
+              onRestart={(tab) => requestRestart(activeProject.projectId, tab)}
+              onError={reportError}
+            />
           </>
         )}
       </section>
@@ -724,6 +565,6 @@ export function App() {
           </form>
         </div>
       )}
-    </main>
+    </WorkspaceLayout>
   )
 }

@@ -1,4 +1,4 @@
-import { contextBridge, ipcRenderer } from 'electron'
+import { clipboard, contextBridge, ipcRenderer } from 'electron'
 import type {
   CmdWorkspaceApi,
   TerminalDataEvent,
@@ -13,6 +13,19 @@ const api: CmdWorkspaceApi = {
   getAppInfo: () => ipcRenderer.invoke('app:info'),
   project: {
     import: () => ipcRenderer.invoke('project:import'),
+  },
+  clipboard: {
+    readText: async () => {
+      const text = clipboard.readText()
+      if (text.length > 5_000_000)
+        throw new Error('Clipboard text must be under 5 MB')
+      return text
+    },
+    writeText: async (text) => {
+      if (typeof text !== 'string' || text.length > 5_000_000)
+        throw new Error('Clipboard text must be a string under 5 MB')
+      clipboard.writeText(text)
+    },
   },
   persistence: {
     loadWorkspace: () => ipcRenderer.invoke('persistence:load-workspace'),

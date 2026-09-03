@@ -117,7 +117,11 @@ export function registerIpc(
   })
   ipcMain.handle('persistence:create-profile', (_event, value) => {
     const request = parse(createProfileSchema, value)
-    return requireRepository().createProfile(request)
+    const shell =
+      request.shell === 'cmd'
+        ? { executable: 'cmd.exe', arguments: ['/Q'] }
+        : { executable: 'powershell.exe', arguments: ['-NoLogo'] }
+    return requireRepository().createProfile({ ...request, ...shell })
   })
   ipcMain.handle('persistence:rename-profile', (_event, value) => {
     const request = parse(renameProfileSchema, value)

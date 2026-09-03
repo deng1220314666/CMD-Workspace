@@ -8,6 +8,7 @@ import type {
   TerminalCreateRequest,
   TerminalDataEvent,
   TerminalSnapshot,
+  TerminalShell,
   TerminalStatus,
   TerminalStatusEvent,
 } from '../shared/terminal'
@@ -16,6 +17,7 @@ import { BoundedTerminalBuffer } from './bounded-buffer'
 interface Runtime {
   id: string
   cwd: string
+  shell: TerminalShell
   cols: number
   rows: number
   pty: IPty | null
@@ -47,6 +49,7 @@ export class TerminalManager {
     const runtime: Runtime = {
       id: randomUUID(),
       cwd,
+      shell: request.shell ?? 'powershell',
       cols: request.cols,
       rows: request.rows,
       pty: null,
@@ -137,17 +140,7 @@ export class TerminalManager {
 
   private spawn(runtime: Runtime): void {
     try {
-      const executable =
-        process.platform === 'win32'
-          ? path.join(
-              process.env.SystemRoot ?? 'C:\\Windows',
-              'System32',
-              'WindowsPowerShell',
-              'v1.0',
-              'powershell.exe',
-            )
-          : (process.env.SHELL ?? '/bin/bash')
-      const args = process.platform === 'win32' ? ['-NoLogo'] : ['--noprofile']
+      const { executable, args } = this.shellCommand(runtime.shell)
       const child = pty.spawn(executable, args, {
         name: 'xterm-256color',
         cols: runtime.cols,
@@ -255,6 +248,7 @@ export class TerminalManager {
       status: runtime.status,
       pid: runtime.pid,
       cwd: runtime.cwd,
+      shell: runtime.shell,
       output: runtime.buffer.toString(),
       lastSequence: runtime.sequence,
       exitCode: runtime.exitCode,
@@ -276,5 +270,31 @@ export class TerminalManager {
         (entry): entry is [string, string] => typeof entry[1] === 'string',
       ),
     )
+  }
+
+  private shellCommand(shell: TerminalShell): {
+    executable: string
+    args: string[]
+  } {
+    if (process.platform !== 'win32')
+      return {
+        executable: process.env.SHELL ?? '/bin/bash',
+        args: ['--noprofile'],
+      }
+    const system32 = path.join(
+      process.env.SystemRoot ?? 'C:\\Windows',
+      'System32',
+    )
+    return shell === 'cmd'
+      ? { executable: path.join(system32, 'cmd.exe'), args: ['/Q'] }
+      : {
+          executable: path.join(
+            system32,
+            'WindowsPowerShell',
+            'v1.0',
+            'powershell.exe',
+          ),
+          args: ['-NoLogo'],
+        }
   }
 }

@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, Menu } from 'electron'
 import { registerIpc } from './ipc'
 import {
   loadEnvironment,
@@ -16,10 +16,10 @@ let databaseError: string | null = null
 
 function createWindow(): BrowserWindow {
   const window = new BrowserWindow({
-    width: 1180,
-    height: 760,
-    minWidth: 760,
-    minHeight: 520,
+    width: 1280,
+    height: 820,
+    minWidth: 1024,
+    minHeight: 768,
     backgroundColor: '#111923',
     show: false,
     webPreferences: {
@@ -68,6 +68,7 @@ function createWindow(): BrowserWindow {
 }
 
 app.whenReady().then(async () => {
+  Menu.setApplicationMenu(null)
   const configPaths = app.isPackaged
     ? [
         path.join(path.dirname(process.execPath), '.env'),

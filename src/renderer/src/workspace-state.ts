@@ -3,12 +3,17 @@ import type {
   WorkspaceBootstrap,
   WorkspaceSelection,
 } from '../../shared/persistence'
-import type { ProjectInfo, TerminalSnapshot } from '../../shared/terminal'
+import type {
+  ProjectInfo,
+  TerminalShell,
+  TerminalSnapshot,
+} from '../../shared/terminal'
 
 export interface TerminalTab {
   profileId: string
   title: string
   cwd: string
+  shell: TerminalShell
   runtime: TerminalSnapshot | null
 }
 
@@ -104,11 +109,15 @@ export function addProfile(
   state: WorkspaceState,
   profile: PersistedTerminalProfile,
   runtime: TerminalSnapshot | null = null,
+  select = true,
 ): WorkspaceState {
   return mapProject(state, profile.projectId, (project) => ({
     ...project,
     terminals: [...project.terminals, { ...profileToTab(profile), runtime }],
-    activeProfileId: profile.profileId,
+    activeProfileId:
+      select || !project.activeProfileId
+        ? profile.profileId
+        : project.activeProfileId,
   }))
 }
 
@@ -231,6 +240,9 @@ function profileToTab(profile: PersistedTerminalProfile): TerminalTab {
     profileId: profile.profileId,
     title: profile.displayName,
     cwd: profile.workingDirectory,
+    shell: profile.executable.toLowerCase().endsWith('cmd.exe')
+      ? 'cmd'
+      : 'powershell',
     runtime: null,
   }
 }

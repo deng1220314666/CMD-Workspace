@@ -1,93 +1,90 @@
 # CMD Workspace
 
-面向 Windows 的本地项目终端工作台。把常用项目集中到一个桌面应用中，为每个项目维护多个真实的交互式 PowerShell 终端；切换项目时，后台终端和 PID 保持不变。
+CMD Workspace is a Windows-first desktop application for organizing local projects and their interactive terminals in one place. Each project can keep multiple live PowerShell or Command Prompt sessions, and switching projects never terminates their PTY processes.
 
-> 当前版本：`0.1.0`，完成 M0–M3。项目调度器、任务依赖启动和产品化安装器仍在开发中。
+> Current version: `0.1.0`. The local terminal workspace and PostgreSQL persistence milestones are complete. Task orchestration, production installers, and code signing are still planned.
 
-## 为什么做这个项目
+## Highlights
 
-同时开发多个本地项目时，终端窗口很快会散落在桌面各处。CMD Workspace 将“项目”和“终端会话”组织在同一个工作台中：项目负责上下文，终端继续作为完整的交互式 shell 工作。
+- Import local project directories and switch between them from a compact, resizable sidebar.
+- Add project aliases and purpose notes without losing the real directory name or path.
+- Create multiple independent PowerShell or Command Prompt terminals per project.
+- Split the terminal workspace horizontally or vertically and resize panes.
+- Rename, reorder, start, restart, switch, and close terminal profiles.
+- Keep live PTYs and stable runtime IDs running while projects, tabs, and panes are switched.
+- Search terminal output, copy selections, paste text, and clear the viewport.
+- Show explicit `starting`, `running`, `exited`, and `failed` process states.
+- Confirm before closing or restarting a terminal that still has a live process.
+- Persist projects, terminal profiles, application selection, and run summaries in PostgreSQL.
+- Restore configuration after an application restart without treating historical PIDs as live processes.
 
-它不是命令执行器，也不会在切换项目时重新创建进程。PTY 生命周期属于 Electron 主进程，项目切换只会分离和重新挂载界面。
+## Technology
 
-## 功能
-
-- 导入本地项目目录，并在左侧项目栏快速切换。
-- 为项目添加备注名和用途说明，同时保留真实目录名及路径。
-- 每个项目创建多个独立 PowerShell 终端。
-- 重命名、排序、启动、重启和关闭终端标签。
-- 切换项目时保持现有 PTY 和 PID，不中断后台输出。
-- 使用 xterm.js 支持 ANSI、Unicode、输入、窗口 resize 和 `Ctrl+C`。
-- 关闭或重启运行中的进程前显示明确确认。
-- 使用 PostgreSQL 持久化项目、终端配置、应用选择状态和运行摘要。
-- 应用异常退出后，将遗留的运行记录标记为 `interrupted`。
-- 应用重启后恢复项目和终端配置，但不会把历史 PID 当作仍在运行的进程。
-
-## 技术栈
-
-- Electron、React、TypeScript、Vite
-- xterm.js、node-pty、Windows ConPTY
-- PostgreSQL、Drizzle ORM、SQL migrations
-- Vitest、ESLint、Prettier
+- Electron, React, TypeScript, and Vite
+- xterm.js and node-pty with Windows ConPTY
+- PostgreSQL, Drizzle ORM, and SQL migrations
+- Vitest, ESLint, and Prettier
 - pnpm
 
-## 架构
+## Architecture
 
 ```text
-┌──────────────────────── Renderer ────────────────────────┐
-│ React workspace / xterm.js / transient selection state │
-└──────────────────────────┬───────────────────────────────┘
-                           │ narrow typed IPC
-                    context-isolated preload
-                           │
-┌──────────────── Electron main process ──────────────────┐
-│ validated IPC                                            │
-│ TerminalManager ── node-pty / ConPTY                    │
-│ bounded output buffers                                   │
-│ PersistenceRepository ── Drizzle ORM                    │
-└─────────────────────┬───────────────────┬────────────────┘
-                      │                   │
-               live PTY processes   PostgreSQL config
-                                    and run summaries
+React renderer
+  |-- project navigation and terminal layouts
+  |-- stable xterm.js view registry
+  |-- renderer-only selection and split state
+  |
+  +-- narrow typed contextBridge API
+        |
+Electron main process
+  |-- validated IPC handlers
+  |-- TerminalManager
+  |     +-- node-pty / Windows ConPTY
+  |     +-- bounded in-memory output buffers
+  |
+  +-- PersistenceRepository
+        +-- Drizzle ORM / PostgreSQL
 ```
 
-安全边界：
+The application maintains these security and lifecycle boundaries:
 
-- Renderer 不生成进程、不直接连接 PostgreSQL，也没有原始 Node.js 权限。
-- `contextIsolation` 保持开启，`nodeIntegration` 保持关闭。
-- 所有 IPC 输入均经过 Zod 校验。
-- 实时终端输出只保存在主进程的有界内存中，不持续写入 PostgreSQL。
-- 数据库中的 PID 仅用于诊断，应用启动时不会尝试重新连接旧 PID。
+- The renderer does not spawn processes, connect directly to PostgreSQL, or receive raw Node.js access.
+- `contextIsolation` remains enabled and `nodeIntegration` remains disabled.
+- IPC payloads are validated before use.
+- Shell choices are validated identifiers mapped to fixed executable and argument arrays.
+- Live terminal output remains in bounded main-process memory instead of being streamed into PostgreSQL.
+- PTY instances are owned by the main process and keyed by stable runtime IDs.
+- Project and tab selection only attach or hide terminal views; they do not stop PTYs.
 
-## 系统要求
+## Requirements
 
-- Windows 10/11 x64
-- Node.js 22 LTS 或更高版本
-- pnpm 10（仓库声明版本为 `10.15.0`）
-- Docker Desktop，或一个可访问的 PostgreSQL 实例
+- Windows 10 or Windows 11, x64
+- Node.js 22 LTS or newer
+- pnpm 10; this repository declares `pnpm@10.15.0`
+- Docker Desktop or an accessible PostgreSQL instance
 
-`node-pty` 通常可以使用预编译模块。如果本机需要源码编译，还需要 Visual Studio Build Tools 的以下组件：
+`node-pty` normally uses a prebuilt native module. If a local source build is required, install these Visual Studio Build Tools components:
 
 - Desktop development with C++
-- MSVC 工具集和 Windows SDK
-- 对应工具集及架构的 Spectre-mitigated libraries
+- The matching MSVC toolset and Windows SDK
+- Spectre-mitigated libraries for the selected toolset and architecture
 
-## 快速开始
+## Quick start
 
-### 1. 安装依赖
+### 1. Install dependencies
 
 ```powershell
 corepack enable
 pnpm install --frozen-lockfile
 ```
 
-### 2. 准备配置
+### 2. Create the local configuration
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-默认开发配置：
+The default development values are:
 
 ```dotenv
 DATABASE_URL=postgresql://nexus:nexus@127.0.0.1:5433/cmd_workspace?sslmode=disable
@@ -95,90 +92,106 @@ DATABASE_TIMEZONE=UTC
 REDIS_URL=redis://127.0.0.1:6380/1
 ```
 
-这些是仅用于本地开发的 Compose 凭据，不应直接用于生产环境或公网数据库。
+These credentials are intended only for local development. Do not reuse them for a public or production database.
 
-### 3. 启动本地服务
+### 3. Start local services
 
 ```powershell
 docker compose up -d postgres redis
 docker compose ps
 ```
 
-Compose 会创建独立的 `cmd_workspace` 数据库。Redis 当前仅作为开发环境中的预留服务，不承载 PTY 输出或 M3 持久化数据。
+PostgreSQL stores application configuration and terminal run summaries. Redis is reserved for future orchestration work and does not store PTY output.
 
-如果你连接的是已经运行、但尚未创建 `cmd_workspace` 的 PostgreSQL，可以执行：
+If PostgreSQL is already running but the `cmd_workspace` database does not exist, run:
 
 ```powershell
 pnpm db:create
 ```
 
-该命令只允许创建固定名称的 `cmd_workspace` 数据库，不会重置已有数据库。
+This command can only create the fixed `cmd_workspace` database; it does not reset existing data.
 
-### 4. 启动应用
+### 4. Start the desktop application
 
 ```powershell
 pnpm dev
 ```
 
-应用启动时会自动执行尚未应用的 Drizzle migration。
+Pending Drizzle migrations are applied when the application starts.
 
-## 使用方式
+## Using the workspace
 
-1. 点击左下角 **Import project**，选择一个本地目录。
-2. 使用项目右侧的 **✎** 设置备注名和项目用途。
-3. 点击终端栏中的 **+** 为当前项目创建更多终端。
-4. 双击终端标签可修改标签名。
-5. 在左侧切换项目。后台 PTY 会继续运行，重新进入项目后会恢复缓冲输出。
-6. 应用重启后，项目和终端配置会恢复为 `idle`；点击 **Start** 才会创建新的 PTY 和 PID。
+1. Select **Import project** and choose a local directory.
+2. Use the project action button to add an alias or purpose note.
+3. Select **+** to create a terminal using the current default Shell.
+4. Use the arrow beside **+** to create either PowerShell or Command Prompt explicitly.
+5. Use the split buttons or keyboard shortcuts to add horizontal or vertical terminal panes.
+6. Double-click a terminal tab, or press `F2`, to rename it.
+7. Switch projects or tabs freely. Their background PTYs continue running and buffered output remains available.
+8. After restarting the application, restored profiles are idle until **Start** creates a new PTY and PID.
 
-## 配置优先级
+## Keyboard shortcuts
 
-开发模式读取仓库根目录的 `.env`。打包版本使用本地默认值，并按以下顺序覆盖：
+| Shortcut                        | Action                                   |
+| ------------------------------- | ---------------------------------------- |
+| `Ctrl+Shift+N`                  | Create a terminal                        |
+| `Ctrl+Shift+H`                  | Split horizontally                       |
+| `Ctrl+Shift+J`                  | Split vertically                         |
+| `Ctrl+PageUp` / `Ctrl+PageDown` | Select the previous or next terminal tab |
+| `F2`                            | Rename the active terminal               |
+| `Ctrl+Shift+W`                  | Close the active terminal                |
+| `Ctrl+F`                        | Search terminal output                   |
+| `Ctrl+Shift+C` or `Ctrl+Insert` | Copy selected terminal text              |
+| `Ctrl+Shift+V`                  | Paste into the active terminal           |
+| `Ctrl+Shift+K`                  | Clear the terminal viewport              |
 
-1. `CMD Workspace.exe` 同目录的 `.env`
+When terminal text is selected, `Ctrl+C` copies the selection. Without a selection, plain `Ctrl+C` is sent to the running PTY so interactive commands still receive the interrupt signal.
+
+## Configuration precedence
+
+Development mode reads `.env` from the repository root. A packaged application uses built-in local defaults and then applies configuration from these sources, with later values taking precedence:
+
+1. `.env` beside `CMD Workspace.exe`
 2. `%APPDATA%\cmd-workspace\.env`
-3. 当前进程的 Windows 环境变量
+3. Windows environment variables inherited by the process
 
-后面的配置优先级更高。因此，打包版可以直接双击运行，也可以在不重新打包的情况下连接其他 PostgreSQL 实例。
+This allows an unpacked build to connect to another PostgreSQL instance without rebuilding the application.
 
-## 数据持久化
+## Persistence model
 
-Drizzle schema 位于 [`src/database/schema.ts`](src/database/schema.ts)，迁移位于 [`drizzle/`](drizzle/)。当前数据包括：
+The Drizzle schema is defined in [`src/database/schema.ts`](src/database/schema.ts), and migrations are stored in [`drizzle/`](drizzle/).
 
-| 表                  | 内容                                       |
-| ------------------- | ------------------------------------------ |
-| `projects`          | 项目名称、备注、用途、规范化路径及排序     |
-| `terminal_profiles` | 终端显示名、工作目录、启动配置及排序       |
-| `terminal_runs`     | 运行状态、诊断 PID、时间、退出码及错误摘要 |
-| `tasks`             | 后续调度器使用的任务与 readiness 配置      |
-| `task_dependencies` | 任务依赖关系和所有权约束                   |
-| `application_state` | 版本化的小型界面状态                       |
+| Table               | Purpose                                                                 |
+| ------------------- | ----------------------------------------------------------------------- |
+| `projects`          | Project names, annotations, normalized paths, and ordering              |
+| `terminal_profiles` | Terminal titles, working directories, Shell configuration, and ordering |
+| `terminal_runs`     | Run status, diagnostic PID, timestamps, exit codes, and error summaries |
+| `tasks`             | Reserved task and readiness configuration for future orchestration      |
+| `task_dependencies` | Task dependency and ownership constraints                               |
+| `application_state` | Small, versioned application selection state                            |
 
-不会写入 PostgreSQL 的内容：
+PostgreSQL does not store live PTY objects, high-frequency terminal output, keyboard input streams, or reconnectable process handles.
 
-- PTY 实例
-- 实时终端输出
-- 键盘输入流
-- 可用于重新连接进程的运行时对象
+Terminal pane layouts are renderer state and are stored locally. They do not require a database migration and do not affect PTY ownership.
 
-## 常用命令
+## Commands
 
-| 命令                 | 作用                                            |
-| -------------------- | ----------------------------------------------- |
-| `pnpm dev`           | 启动 Vite、Electron TypeScript watch 和桌面应用 |
-| `pnpm build`         | 类型编译并生成生产资源                          |
-| `pnpm package`       | 生成 unpacked Windows 应用                      |
-| `pnpm db:create`     | 为已有 PostgreSQL 创建 `cmd_workspace` 数据库   |
-| `pnpm db:generate`   | 根据 Drizzle schema 生成增量迁移                |
-| `pnpm test`          | 运行 Vitest 单元测试                            |
-| `pnpm smoke:db`      | 验证迁移、恢复、约束、级联和运行 reconciliation |
-| `pnpm smoke:pty`     | 验证真实 ConPTY、REPL、Unicode、resize 和中断   |
-| `pnpm smoke:manager` | 验证多终端生命周期和 PID 稳定性                 |
-| `pnpm lint`          | 运行 ESLint                                     |
-| `pnpm typecheck`     | 检查 renderer、main 和 preload 类型             |
-| `pnpm format:check`  | 检查 Prettier 格式                              |
+| Command              | Purpose                                                                       |
+| -------------------- | ----------------------------------------------------------------------------- |
+| `pnpm dev`           | Run Vite, Electron TypeScript watch mode, and the desktop application         |
+| `pnpm build`         | Type-check Electron code and create production renderer assets                |
+| `pnpm package`       | Create the unpacked Windows application                                       |
+| `pnpm db:create`     | Create the fixed `cmd_workspace` database on an existing PostgreSQL server    |
+| `pnpm db:generate`   | Generate an incremental migration from the Drizzle schema                     |
+| `pnpm test`          | Run the Vitest unit test suite                                                |
+| `pnpm smoke:db`      | Verify migrations, restoration, constraints, ordering, and run reconciliation |
+| `pnpm smoke:pty`     | Verify interactive ConPTY behavior, Unicode, resize, and interruption         |
+| `pnpm smoke:manager` | Verify multiple terminal lifecycles and stable runtime IDs/PIDs               |
+| `pnpm lint`          | Run ESLint                                                                    |
+| `pnpm typecheck`     | Type-check renderer, main, and preload code                                   |
+| `pnpm format:check`  | Check Prettier formatting                                                     |
 
-完整验收：
+Recommended milestone verification:
 
 ```powershell
 pnpm format:check
@@ -191,79 +204,81 @@ pnpm smoke:pty
 pnpm smoke:manager
 ```
 
-## Windows 打包
+## Windows packaging
 
 ```powershell
 pnpm package
 ```
 
-当前命令生成目录版应用：
+The current command creates an unpacked application at:
 
 ```text
 release/win-unpacked/CMD Workspace.exe
 ```
 
-目前尚未生成安装器，也没有代码签名。Windows SmartScreen 对本地构建给出提示是预期行为。
+An installer and code signing are not configured yet. Windows SmartScreen warnings are expected for local unsigned builds.
 
-## 项目结构
+## Project structure
 
 ```text
 src/
-├─ main/       Electron 主进程、IPC、PTY 和运行记录协调
-├─ preload/    类型受限的 contextBridge API
-├─ renderer/   React 工作台和 xterm.js 视图
-├─ database/   Drizzle schema、迁移入口和 Repository
-└─ shared/     main/preload/renderer 共享的数据契约与校验
-drizzle/       可审查、可重复执行的 PostgreSQL migrations
-tests/         单元测试及 PostgreSQL/ConPTY smoke tests
+|-- main/       Electron main process, IPC, PTY management, and run tracking
+|-- preload/    Narrow typed contextBridge API
+|-- renderer/   React workspace, layouts, and xterm.js views
+|-- database/   Drizzle schema, migrations entry point, and repository
++-- shared/     Contracts and validation shared across processes
+drizzle/        Auditable PostgreSQL migrations
+tests/          Unit tests and PostgreSQL/ConPTY smoke tests
 ```
 
-## 故障排查
+## Troubleshooting
 
-### `MSB8040: 此项目需要缓解了 Spectre 漏洞的库`
+### `MSB8040: Spectre-mitigated libraries are required`
 
-打开 Visual Studio Installer，在 **单个组件** 中为当前 MSVC 工具集和 x64 架构安装 Spectre-mitigated libraries，然后重新执行 `pnpm install`。
+Open Visual Studio Installer and add the Spectre-mitigated libraries for the active MSVC toolset and x64 architecture, then run `pnpm install` again.
 
 ### `PostgreSQL persistence is unavailable`
 
-确认 PostgreSQL 正在监听配置的端口：
+Confirm that PostgreSQL is listening on the configured port:
 
 ```powershell
 Test-NetConnection 127.0.0.1 -Port 5433
 docker compose ps
 ```
 
-同时检查数据库名是否为 `cmd_workspace`，并确认 `.env` 中的连接信息正确。
+Also confirm that the database is named `cmd_workspace` and that `.env` contains the correct connection string.
 
-### `Recreating node_modules` 长时间没有变化
+### `Recreating node_modules` takes a long time
 
-首次安装和 `node-pty` 原生模块处理可能需要一些时间。先确认没有其他 `pnpm dev` 或 Electron 进程锁定 `node_modules`，再重新运行安装命令。
+The first installation and native `node-pty` setup can take a while. Confirm that no other `pnpm dev` or Electron process is locking `node_modules`, then retry the installation.
 
-### 切换项目后终端是否会停止？
+### Do terminals stop when switching projects?
 
-不会。项目选择只是 Renderer 状态。切换项目不会调用 stop、kill、restart 或 close，也不会更换正在运行的 PTY PID。
+No. Project selection is renderer state only. Switching projects does not invoke stop, kill, restart, or close operations and does not replace live PTY processes.
 
 ## Roadmap
 
-- [x] M0：Electron/React/TypeScript 工程基础
-- [x] M1：真实交互式 ConPTY 终端
-- [x] M2：项目导入和多终端管理
-- [x] M3：PostgreSQL 持久化和运行摘要
-- [ ] M4：任务调度、依赖、readiness 和重试策略
-- [ ] M5：安装器、日志、快捷键和异常恢复体验
+- [x] M0: Electron, React, and TypeScript foundation
+- [x] M1: Interactive Windows ConPTY terminal
+- [x] M2: Project navigation and multiple terminal management
+- [x] M3: PostgreSQL persistence and run summaries
+- [x] UI phase 1: Compact project sidebar, terminal tabs, and main layout
+- [x] UI phase 2: Split terminal workspace, Shell selection, tools, and shortcuts
+- [ ] M4: Task orchestration, dependencies, readiness checks, and retry policies
+- [ ] M5: Installer, logging, and production recovery workflows
 
-详细计划见 [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md)。
+See [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) for detailed milestones and acceptance checks.
 
-## 参与贡献
+## Contributing
 
-欢迎提交 Issue 和 Pull Request。开始开发前请阅读 [`AGENTS.md`](AGENTS.md) 中的架构约束，并遵循以下原则：
+Read [`AGENTS.md`](AGENTS.md) before making changes. In particular:
 
-1. 不要在 Renderer 中生成进程或连接数据库。
-2. 不要把实时 PTY 输出持续写入 PostgreSQL。
-3. 所有新增 IPC 都必须有明确类型和运行时校验。
-4. 保持 migration 增量、可审查，并保护已有用户数据。
-5. 提交前运行与改动范围对应的测试和 smoke test。
+1. Do not spawn processes or connect to the database from the renderer.
+2. Do not persist high-frequency PTY output in PostgreSQL.
+3. Give every IPC addition an explicit type and runtime validation.
+4. Keep migrations incremental and protect existing user data.
+5. Run checks and smoke tests appropriate to the changed area before committing.
 
 ## License
 
-仓库目前尚未包含开源许可证。在公开发布或接受外部贡献前，请选择并添加适合项目的 `LICENSE` 文件；在此之前，默认版权法仍然适用。
+This repository does not currently include an open-source license. Standard copyright restrictions apply until a suitable `LICENSE` file is added.
