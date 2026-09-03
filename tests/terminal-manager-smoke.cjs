@@ -23,15 +23,38 @@ function waitFor(predicate, label, timeout = 10_000) {
 }
 
 async function run() {
-  const first = await manager.create({ cwd: process.cwd(), cols: 90, rows: 28 })
+  const first = await manager.create({
+    cwd: process.cwd(),
+    cols: 90,
+    rows: 28,
+    shell: 'powershell',
+  })
   if (first.status !== 'running' || !first.pid)
     throw new Error('Manager did not start a live terminal')
-  const siblings = await Promise.all(
-    Array.from({ length: 3 }, () =>
-      manager.create({ cwd: process.cwd(), cols: 90, rows: 28 }),
+  const siblings = await Promise.all([
+    manager.create({
+      cwd: process.cwd(),
+      cols: 90,
+      rows: 28,
+      shell: 'cmd',
+    }),
+    ...Array.from({ length: 2 }, () =>
+      manager.create({
+        cwd: process.cwd(),
+        cols: 90,
+        rows: 28,
+        shell: 'powershell',
+      }),
     ),
-  )
+  ])
   const sibling = siblings[0]
+  if (sibling.shell !== 'cmd')
+    throw new Error('Manager did not retain the selected shell')
+  manager.write(sibling.terminalId, 'echo CMD_SHELL_OK\r')
+  await waitFor(
+    () => data.some((event) => event.data.includes('CMD_SHELL_OK')),
+    'Command Prompt output',
+  )
   const allTerminals = [first, ...siblings]
   const stablePids = new Map(
     allTerminals.map((terminal) => [terminal.terminalId, terminal.pid]),
@@ -92,6 +115,7 @@ async function run() {
     `TERMINAL_MANAGER_SMOKE_OK id=${snapshot.terminalId} status=${snapshot.status} exit=${snapshot.exitCode}`,
   )
   manager.dispose()
+  process.exit(0)
 }
 
 run().catch((error) => {

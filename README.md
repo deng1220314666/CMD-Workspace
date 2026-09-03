@@ -1,5 +1,7 @@
 # CMD Workspace
 
+[English](README.md) | [简体中文](README.zh-CN.md)
+
 CMD Workspace is a Windows-first desktop application for organizing local projects and their interactive terminals in one place. Each project can keep multiple live PowerShell or Command Prompt sessions, and switching projects never terminates their PTY processes.
 
 > Current version: `0.1.0`. The local terminal workspace and PostgreSQL persistence milestones are complete. Task orchestration, production installers, and code signing are still planned.

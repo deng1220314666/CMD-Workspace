@@ -17,6 +17,7 @@ describe('TerminalRunTracker', () => {
     await tracker.recordStart('profile-1', {
       terminalId: 'terminal-1',
       cwd: 'C:\\work',
+      shell: 'powershell',
       status: 'running',
       pid: 123,
       output: 'must not reach PostgreSQL',

@@ -8,11 +8,14 @@ export type TerminalStatus =
   | 'exited'
   | 'failed'
 
+export type TerminalShell = 'powershell' | 'cmd'
+
 export interface TerminalCreateRequest {
   profileId: string
   cwd: string
   cols: number
   rows: number
+  shell: TerminalShell
 }
 
 export interface TerminalWriteRequest {
@@ -60,6 +63,7 @@ export interface TerminalSnapshot {
   status: TerminalStatus
   pid: number | null
   cwd: string
+  shell: TerminalShell
   output: string
   lastSequence: number
   exitCode?: number
@@ -97,9 +101,15 @@ export interface ProjectApi {
   import(): Promise<ProjectInfo | null>
 }
 
+export interface ClipboardApi {
+  readText(): Promise<string>
+  writeText(text: string): Promise<void>
+}
+
 export interface CmdWorkspaceApi {
   terminal: TerminalApi
   project: ProjectApi
+  clipboard: ClipboardApi
   persistence: import('./persistence').PersistenceApi
   getAppInfo(): Promise<AppInfo>
 }

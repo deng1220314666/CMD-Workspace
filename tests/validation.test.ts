@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
+  createProfileSchema,
+  createTerminalSchema,
   reorderProfilesSchema,
   resizeTerminalSchema,
   saveSelectionSchema,
@@ -22,6 +24,36 @@ describe('terminal IPC validation', () => {
         data: 'x'.repeat(65_537),
       }).success,
     ).toBe(false)
+  })
+
+  it('accepts only supported shell identifiers', () => {
+    const profileId = crypto.randomUUID()
+    expect(
+      createTerminalSchema.safeParse({
+        profileId,
+        cwd: 'C:\\work',
+        shell: 'cmd',
+        cols: 80,
+        rows: 24,
+      }).success,
+    ).toBe(true)
+    expect(
+      createTerminalSchema.safeParse({
+        profileId,
+        cwd: 'C:\\work',
+        shell: 'cmd.exe /c untrusted',
+        cols: 80,
+        rows: 24,
+      }).success,
+    ).toBe(false)
+    expect(
+      createProfileSchema.safeParse({
+        projectId: crypto.randomUUID(),
+        displayName: 'Command Prompt',
+        workingDirectory: 'C:\\work',
+        shell: 'cmd',
+      }).success,
+    ).toBe(true)
   })
 
   it('validates persisted profile ownership and selection IDs', () => {

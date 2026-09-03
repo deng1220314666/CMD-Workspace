@@ -38,6 +38,7 @@ const terminal = (terminalId: string, pid: number): TerminalSnapshot => ({
   status: 'running',
   pid,
   cwd: 'C:\\work',
+  shell: 'powershell',
   output: '',
   lastSequence: 0,
 })

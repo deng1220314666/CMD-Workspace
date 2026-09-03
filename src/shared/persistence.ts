@@ -35,6 +35,7 @@ export interface ProfileCreateRequest {
   projectId: string
   displayName: string
   workingDirectory: string
+  shell: import('./terminal').TerminalShell
 }
 
 export interface ProfileRenameRequest {

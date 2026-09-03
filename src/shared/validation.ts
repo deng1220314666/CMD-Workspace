@@ -11,6 +11,7 @@ const dimensions = {
 export const createTerminalSchema = z.object({
   profileId,
   cwd: z.string().min(1).max(32_767),
+  shell: z.enum(['powershell', 'cmd']),
   ...dimensions,
 })
 export const writeTerminalSchema = z.object({
@@ -33,6 +34,7 @@ export const createProfileSchema = z.object({
   projectId,
   displayName: z.string().trim().min(1).max(120),
   workingDirectory: z.string().min(1).max(32_767),
+  shell: z.enum(['powershell', 'cmd']),
 })
 export const renameProfileSchema = z.object({
   profileId,

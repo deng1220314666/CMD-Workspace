@@ -42,3 +42,11 @@ Follow `IMPLEMENTATION_PLAN.md`. Do not implement remote control, authentication
 ## Completion criteria
 
 A task is complete only when its observable behavior works, TypeScript passes, relevant tests pass, and errors are surfaced in the UI without crashing Electron. Do not claim success from compilation alone.
+
+## Project skills
+
+For CMD-Workspace UI implementation, review, or optimization, use:
+
+- `$design-cmd-workspace-ui`
+
+UI work must preserve terminal and PTY lifecycle behavior.
