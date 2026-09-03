@@ -1,6 +1,6 @@
 import type { AppInfo } from '../../../shared/terminal'
 import type { WorkspaceProject } from '../workspace-state'
-import { FolderIcon, MoreIcon, PlusIcon, TerminalIcon } from './icons'
+import { FolderIcon, MoreIcon, PlusIcon } from './icons'
 import { isLiveStatus } from './terminal-status'
 
 interface ProjectSidebarProps {
@@ -28,7 +28,7 @@ export function ProjectSidebar({
     <aside className="project-sidebar">
       <header className="sidebar-header">
         <div className="brand-mark" aria-hidden="true">
-          <TerminalIcon size={18} />
+          <img src="./logo/logo-2.png" alt="" />
         </div>
         <div>
           <strong>CMD Workspace</strong>

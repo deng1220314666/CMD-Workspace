@@ -14,10 +14,44 @@
   --accent: #f0ad3d;
   --accent-soft: #f0ad3d1a;
   --green: #72cf96;
+  --scrollbar-track: #090f15;
+  --scrollbar-thumb: #314552;
+  --scrollbar-thumb-hover: #49606f;
+  --scrollbar-thumb-active: #9a7131;
 }
 
 * {
   box-sizing: border-box;
+  scrollbar-color: var(--scrollbar-thumb) transparent;
+  scrollbar-width: thin;
+}
+*::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+*::-webkit-scrollbar-thumb {
+  min-width: 28px;
+  min-height: 28px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--scrollbar-thumb) padding-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--scrollbar-thumb-active);
+}
+*::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none;
+}
+*::-webkit-scrollbar-corner {
+  background: var(--scrollbar-track);
 }
 html,
 body,
@@ -85,14 +119,13 @@ button {
   flex: 0 0 auto;
   display: grid;
   place-items: center;
-  border: 1px solid #3e5261;
-  border-radius: 4px;
-  background: #111b24;
-  color: var(--accent);
-  font:
-    800 13px/1 'Arial Narrow',
-    sans-serif;
-  letter-spacing: -1.5px;
+  overflow: hidden;
+}
+.brand-mark img {
+  width: 30px;
+  height: 30px;
+  display: block;
+  object-fit: contain;
 }
 .sidebar-header div:last-child {
   min-width: 0;
@@ -129,6 +162,7 @@ button {
   min-height: 0;
   flex: 1;
   overflow: auto;
+  scrollbar-gutter: stable;
   padding: 4px 6px 8px;
 }
 .project-list-empty {
@@ -449,6 +483,15 @@ h2 {
   display: flex;
   overflow-x: auto;
   scrollbar-width: thin;
+}
+.tab-strip-scroll::-webkit-scrollbar {
+  height: 5px;
+}
+.tab-strip-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.tab-strip-scroll::-webkit-scrollbar-thumb {
+  border-width: 1px;
 }
 .new-terminal-control {
   position: relative;
@@ -893,6 +936,25 @@ h2 {
 .terminal-host {
   width: 100%;
   height: 100%;
+}
+.xterm .xterm-viewport {
+  scrollbar-color: #344b5a #0b1118;
+}
+.xterm .xterm-viewport::-webkit-scrollbar {
+  width: 8px;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-track {
+  background: #0b1118;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+  border-color: #0b1118;
+  background-color: #344b5a;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+  background-color: #506979;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:active {
+  background-color: var(--scrollbar-thumb-active);
 }
 .copy-selection-button {
   position: absolute;

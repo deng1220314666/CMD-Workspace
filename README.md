@@ -4,7 +4,7 @@
 
 CMD Workspace is a Windows-first desktop application for organizing local projects and their interactive terminals in one place. Each project can keep multiple live PowerShell or Command Prompt sessions, and switching projects never terminates their PTY processes.
 
-> Current version: `0.1.0`. The local terminal workspace and PostgreSQL persistence milestones are complete. Task orchestration, production installers, and code signing are still planned.
+> Current version: `0.1.0`. The local terminal workspace and PostgreSQL persistence milestones are complete. Task orchestration, code signing, and the production release pipeline are still planned.
 
 ## Highlights
 
@@ -178,20 +178,21 @@ Terminal pane layouts are renderer state and are stored locally. They do not req
 
 ## Commands
 
-| Command              | Purpose                                                                       |
-| -------------------- | ----------------------------------------------------------------------------- |
-| `pnpm dev`           | Run Vite, Electron TypeScript watch mode, and the desktop application         |
-| `pnpm build`         | Type-check Electron code and create production renderer assets                |
-| `pnpm package`       | Create the unpacked Windows application                                       |
-| `pnpm db:create`     | Create the fixed `cmd_workspace` database on an existing PostgreSQL server    |
-| `pnpm db:generate`   | Generate an incremental migration from the Drizzle schema                     |
-| `pnpm test`          | Run the Vitest unit test suite                                                |
-| `pnpm smoke:db`      | Verify migrations, restoration, constraints, ordering, and run reconciliation |
-| `pnpm smoke:pty`     | Verify interactive ConPTY behavior, Unicode, resize, and interruption         |
-| `pnpm smoke:manager` | Verify multiple terminal lifecycles and stable runtime IDs/PIDs               |
-| `pnpm lint`          | Run ESLint                                                                    |
-| `pnpm typecheck`     | Type-check renderer, main, and preload code                                   |
-| `pnpm format:check`  | Check Prettier formatting                                                     |
+| Command                  | Purpose                                                                       |
+| ------------------------ | ----------------------------------------------------------------------------- |
+| `pnpm dev`               | Run Vite, Electron TypeScript watch mode, and the desktop application         |
+| `pnpm build`             | Type-check Electron code and create production renderer assets                |
+| `pnpm package`           | Create the unpacked Windows application                                       |
+| `pnpm package:installer` | Create an installable Windows NSIS package                                    |
+| `pnpm db:create`         | Create the fixed `cmd_workspace` database on an existing PostgreSQL server    |
+| `pnpm db:generate`       | Generate an incremental migration from the Drizzle schema                     |
+| `pnpm test`              | Run the Vitest unit test suite                                                |
+| `pnpm smoke:db`          | Verify migrations, restoration, constraints, ordering, and run reconciliation |
+| `pnpm smoke:pty`         | Verify interactive ConPTY behavior, Unicode, resize, and interruption         |
+| `pnpm smoke:manager`     | Verify multiple terminal lifecycles and stable runtime IDs/PIDs               |
+| `pnpm lint`              | Run ESLint                                                                    |
+| `pnpm typecheck`         | Type-check renderer, main, and preload code                                   |
+| `pnpm format:check`      | Check Prettier formatting                                                     |
 
 Recommended milestone verification:
 
@@ -208,17 +209,31 @@ pnpm smoke:manager
 
 ## Windows packaging
 
+Create an unpacked application for local testing:
+
 ```powershell
 pnpm package
 ```
 
-The current command creates an unpacked application at:
+The unpacked application is written to:
 
 ```text
 release/win-unpacked/CMD Workspace.exe
 ```
 
-An installer and code signing are not configured yet. Windows SmartScreen warnings are expected for local unsigned builds.
+Create an installer that can be sent to other Windows users:
+
+```powershell
+pnpm package:installer
+```
+
+The NSIS installer is written to a file similar to:
+
+```text
+release/CMD Workspace Setup 0.1.0.exe
+```
+
+Code signing is not configured. Windows SmartScreen may warn recipients that the publisher is unknown. They should only select **More info → Run anyway** when they trust the source of the installer. A trusted code-signing certificate is recommended before public distribution.
 
 ## Project structure
 
@@ -267,7 +282,7 @@ No. Project selection is renderer state only. Switching projects does not invoke
 - [x] UI phase 1: Compact project sidebar, terminal tabs, and main layout
 - [x] UI phase 2: Split terminal workspace, Shell selection, tools, and shortcuts
 - [ ] M4: Task orchestration, dependencies, readiness checks, and retry policies
-- [ ] M5: Installer, logging, and production recovery workflows
+- [ ] M5: Code signing, logging, and production recovery workflows
 
 See [`IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md) for detailed milestones and acceptance checks.
 

@@ -20,6 +20,7 @@ function createWindow(): BrowserWindow {
     height: 820,
     minWidth: 1024,
     minHeight: 768,
+    icon: path.join(__dirname, '..', 'renderer', 'logo', 'logo-2.png'),
     backgroundColor: '#111923',
     show: false,
     webPreferences: {

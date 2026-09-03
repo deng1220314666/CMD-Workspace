@@ -185,3 +185,33 @@ Acceptance checks:
 - [x] Clicking `+` immediately creates a terminal using the remembered Shell.
 - [x] The adjacent arrow opens a keyboard-accessible menu whose choices immediately create the selected Shell.
 - [x] Existing terminals, PTYs, shortcuts, and split creation behavior remain unchanged.
+
+## Completed fix: desktop scrollbar styling
+
+Scope: replace native Chromium scrollbar visuals with compact dark-theme styling without changing scroll behavior or terminal lifecycle.
+
+Acceptance checks:
+
+- [x] Project lists, terminal tabs, and xterm history use consistent low-contrast scrollbar tracks and handles.
+- [x] Hover and active states remain visible without overpowering terminal content.
+- [x] Horizontal tab scrolling stays compact and all scrollable regions retain mouse, wheel, touchpad, and keyboard behavior.
+
+## Completed fix: application branding asset
+
+Scope: use `src/public/logo/logo-2.png` consistently for in-app branding, the Electron window, and the packaged Windows executable.
+
+Acceptance checks:
+
+- [x] Vite copies the shared logo into the Renderer build and the sidebar displays it without changing layout dimensions.
+- [x] Electron uses the shared PNG for the development window and packaged runtime.
+- [x] electron-builder writes a multi-size `build/icon.ico` into the unpacked Windows executable.
+
+## Completed fix: Windows installer command
+
+Scope: expose a repeatable NSIS installer command and document the difference between unpacked and installable artifacts.
+
+Acceptance checks:
+
+- [x] `pnpm package:installer` is configured to build an x64 Windows NSIS installer.
+- [x] English and Simplified Chinese documentation identify both artifact locations.
+- [x] Both documents warn that unsigned installers can trigger Windows SmartScreen and recommend code signing for public distribution.
