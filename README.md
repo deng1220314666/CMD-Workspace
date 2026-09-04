@@ -134,20 +134,21 @@ Pending Drizzle migrations are applied when the application starts.
 
 ## Keyboard shortcuts
 
-| Shortcut                        | Action                                   |
-| ------------------------------- | ---------------------------------------- |
-| `Ctrl+Shift+N`                  | Create a terminal                        |
-| `Ctrl+Shift+H`                  | Split horizontally                       |
-| `Ctrl+Shift+J`                  | Split vertically                         |
-| `Ctrl+PageUp` / `Ctrl+PageDown` | Select the previous or next terminal tab |
-| `F2`                            | Rename the active terminal               |
-| `Ctrl+Shift+W`                  | Close the active terminal                |
-| `Ctrl+F`                        | Search terminal output                   |
-| `Ctrl+Shift+C` or `Ctrl+Insert` | Copy selected terminal text              |
-| `Ctrl+Shift+V`                  | Paste into the active terminal           |
-| `Ctrl+Shift+K`                  | Clear the terminal viewport              |
+| Shortcut                                    | Action                                                 |
+| ------------------------------------------- | ------------------------------------------------------ |
+| `Ctrl+Shift+N`                              | Create a terminal                                      |
+| `Ctrl+Shift+H`                              | Split horizontally                                     |
+| `Ctrl+Shift+J`                              | Split vertically                                       |
+| `Ctrl+PageUp` / `Ctrl+PageDown`             | Select the previous or next terminal tab               |
+| `F2`                                        | Rename the active terminal                             |
+| `Ctrl+Shift+W`                              | Close the active terminal                              |
+| `Ctrl+F`                                    | Search terminal output                                 |
+| `Ctrl+Shift+C` or `Ctrl+Insert`             | Copy selected terminal text                            |
+| `Ctrl+V`, `Ctrl+Shift+V`, or `Shift+Insert` | Paste external clipboard text into the active terminal |
+| `Ctrl+Shift+K`                              | Clear the terminal viewport                            |
 
 When terminal text is selected, `Ctrl+C` copies the selection. Without a selection, plain `Ctrl+C` is sent to the running PTY so interactive commands still receive the interrupt signal.
+Right-click copies the current selection, or pastes external clipboard text when there is no selection.
 
 ## Configuration precedence
 

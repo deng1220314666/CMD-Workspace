@@ -21,7 +21,7 @@ const keyEvent = (
 })
 
 describe('terminal tool shortcuts', () => {
-  it('recognizes paste, find, and clear without claiming plain Ctrl+C', () => {
+  it('recognizes Windows paste, find, and clear without claiming plain Ctrl+C', () => {
     const event = {
       key: 'v',
       ctrlKey: true,
@@ -29,6 +29,20 @@ describe('terminal tool shortcuts', () => {
       metaKey: false,
     }
     expect(terminalShortcutAction(event, false)).toBe('paste')
+    expect(terminalShortcutAction({ ...event, shiftKey: false }, false)).toBe(
+      'paste',
+    )
+    expect(
+      terminalShortcutAction(
+        {
+          ...event,
+          key: 'Insert',
+          ctrlKey: false,
+          shiftKey: true,
+        },
+        false,
+      ),
+    ).toBe('paste')
     expect(
       terminalShortcutAction({ ...event, key: 'f', shiftKey: false }, false),
     ).toBe('find')

@@ -448,7 +448,7 @@ export function TerminalWorkspace({
               className="icon-button"
               type="button"
               aria-label="Paste into terminal"
-              title="Paste (Ctrl+Shift+V)"
+              title="Paste (Ctrl+V)"
               onClick={() =>
                 void registryRef.current?.paste(activeTab.profileId)
               }

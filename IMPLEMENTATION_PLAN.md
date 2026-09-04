@@ -215,3 +215,56 @@ Acceptance checks:
 - [x] `pnpm package:installer` is configured to build an x64 Windows NSIS installer.
 - [x] English and Simplified Chinese documentation identify both artifact locations.
 - [x] Both documents warn that unsigned installers can trigger Windows SmartScreen and recommend code signing for public distribution.
+
+## Active fix: terminal activation and IME focus
+
+Scope: make a terminal return to its live prompt when its project or pane is activated, and keep Chinese IME composition anchored to the single visible, focused xterm instance. Preserve mounted terminal views and all PTY runtime IDs/PIDs.
+
+Acceptance checks:
+
+- [x] Activating a project or terminal pane fits the visible xterm, scrolls it to the bottom, and focuses it without recreating the terminal view.
+- [x] Snapshot restoration does not let background terminal views steal focus.
+- [x] Hidden or inactive terminal views release focus so IME composition and candidate UI remain anchored to the active prompt.
+- [x] Project switching retains terminal runtime IDs/PIDs and buffered output.
+- [x] Pass format, lint, typecheck, unit tests, production build, and the terminal-manager ConPTY lifecycle smoke test.
+- [ ] Complete a practical Chinese IME candidate-position check in a normal desktop session; the managed runner's Chromium GPU process exits before the window loads.
+
+## Active fix: external terminal paste
+
+Scope: route standard Windows paste interactions through the existing bounded Electron clipboard capability and xterm input path without changing PTY ownership or plain `Ctrl+C` behavior.
+
+Acceptance checks:
+
+- [x] Paste external text with `Ctrl+V`, `Ctrl+Shift+V`, and `Shift+Insert`.
+- [x] Right-click copies a terminal selection and pastes when there is no selection.
+- [x] Keep plain `Ctrl+C` available to interrupt the running PTY when no text is selected.
+- [x] Pass format, lint, typecheck, unit tests, production build, and the terminal-manager ConPTY smoke test.
+- [ ] Complete a practical cross-application clipboard paste check in a normal desktop session; the managed runner's Chromium GPU process exits before the window loads.
+
+## Active fix: IME duplicate cursor indicator
+
+Scope: keep Chinese IME composition anchored to the active xterm while suppressing the stale terminal cursor that otherwise appears beside the composition caret. Preserve PTY ownership, terminal output, and input forwarding.
+
+Acceptance checks:
+
+- [ ] Show only the IME composition caret while composing text; restore the normal terminal cursor when composition finishes or is cancelled.
+- [x] Clear composition state when a terminal loses focus or becomes inactive so hidden terminal views cannot retain a highlighted cursor.
+- [x] Pass format, lint, typecheck, unit tests, production build, and the terminal-manager ConPTY smoke test.
+- [ ] Complete a practical Chinese IME visual check in a normal desktop session; the managed runner cannot launch the Chromium window reliably.
+
+## Active fix: single terminal cursor and direct-input layout
+
+Scope: remove the bottom command composer and make the active xterm the only command-input surface. Enforce single-cursor ownership across visible split panes and IME composition without changing PTY runtime ownership, output transport, or project switching.
+
+Acceptance checks:
+
+- [x] Remove the bottom command composer, its helper state, tests, layout row, and related guidance.
+- [x] Keep direct xterm typing, REPL interaction, Ctrl+C, completion, copy/paste, search, splits, and shortcuts unchanged.
+- [x] Render one stable, non-blinking cursor only on the active terminal surface; inactive and hidden surfaces render no cursor.
+- [x] During IME composition, hide the xterm cursor layer and retain only the composition caret.
+- [x] Coalesce ordered PTY output received within one animation frame so xterm does not paint intermediate TUI cursor positions.
+- [x] Hide the cursor layer while an output batch is being parsed and reveal it only after the final cursor position has settled.
+- [x] Target xterm 5.5's actual DOM-renderer cursor cell (`.xterm-cursor`) rather than the nonexistent canvas-layer selector.
+- [x] Switching projects or panes keeps runtime IDs/PIDs and does not recreate, restart, or stop a PTY.
+- [x] Pass formatting, lint, typecheck, 26 unit tests, production build, and terminal-manager lifecycle verification.
+- [ ] Complete a practical cursor check in a normal desktop session.

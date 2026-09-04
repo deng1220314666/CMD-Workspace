@@ -105,6 +105,7 @@ function PersistentTerminalSurface({
         ref={assignHandle}
         key={`${runtime.terminalId}-${generation}`}
         terminalId={runtime.terminalId}
+        active={active && position !== null}
         onError={onError}
         onShortcut={(action) => onShortcut(profileId, action)}
       />

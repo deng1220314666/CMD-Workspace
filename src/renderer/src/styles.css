@@ -937,6 +937,15 @@ h2 {
   width: 100%;
   height: 100%;
 }
+.terminal-surface:not(.active) .xterm-cursor,
+.terminal-host:has(.composition-view.active) .xterm-cursor,
+.terminal-host.output-updating .xterm-cursor,
+.terminal-host.ime-composing .xterm-cursor {
+  visibility: hidden;
+}
+.terminal-surface:not(.active) .composition-view {
+  display: none !important;
+}
 .xterm .xterm-viewport {
   scrollbar-color: #344b5a #0b1118;
 }

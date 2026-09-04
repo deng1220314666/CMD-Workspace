@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useLayoutEffect,
   useRef,
   useState,
 } from 'react'
@@ -14,8 +15,11 @@ import {
   type TerminalShortcutAction,
 } from './terminal-shortcuts'
 
+const CURSOR_SETTLE_DELAY_MS = 48
+
 interface TerminalViewProps {
   terminalId: string
+  active: boolean
   onError: (message: string) => void
   onShortcut: (action: TerminalShortcutAction) => void
 }
@@ -31,9 +35,11 @@ export interface TerminalViewHandle {
 }
 
 export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
-  function TerminalView({ terminalId, onError, onShortcut }, ref) {
+  function TerminalView({ terminalId, active, onError, onShortcut }, ref) {
     const hostRef = useRef<HTMLDivElement>(null)
     const terminalRef = useRef<Terminal | null>(null)
+    const fitRef = useRef<FitAddon | null>(null)
+    const activeRef = useRef(active)
     const searchRef = useRef<SearchAddon | null>(null)
     const onShortcutRef = useRef(onShortcut)
     const feedbackTimerRef = useRef<number | null>(null)
@@ -43,6 +49,27 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
     useEffect(() => {
       onShortcutRef.current = onShortcut
     }, [onShortcut])
+
+    const activateTerminal = useCallback(() => {
+      fitRef.current?.fit()
+      terminalRef.current?.scrollToBottom()
+      terminalRef.current?.focus()
+    }, [])
+
+    const setCompositionActive = useCallback((composing: boolean) => {
+      hostRef.current?.classList.toggle('ime-composing', composing)
+    }, [])
+
+    useLayoutEffect(() => {
+      activeRef.current = active
+      if (!active) {
+        setCompositionActive(false)
+        terminalRef.current?.blur()
+        return
+      }
+      const frame = window.requestAnimationFrame(activateTerminal)
+      return () => window.cancelAnimationFrame(frame)
+    }, [activateTerminal, active, setCompositionActive])
 
     const copySelection = useCallback(async (): Promise<boolean> => {
       const selection = terminalRef.current?.getSelection() ?? ''
@@ -109,10 +136,12 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
     )
 
     useEffect(() => {
-      if (!hostRef.current) return
+      const host = hostRef.current
+      if (!host) return
       const terminal = new Terminal({
-        cursorBlink: true,
+        cursorBlink: false,
         cursorStyle: 'bar',
+        cursorInactiveStyle: 'none',
         fontFamily: 'Cascadia Mono, Consolas, monospace',
         fontSize: 14,
         lineHeight: 1.25,
@@ -137,9 +166,19 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       const searchAddon = new SearchAddon()
       terminal.loadAddon(fitAddon)
       terminal.loadAddon(searchAddon)
-      terminal.open(hostRef.current)
+      terminal.open(host)
       terminalRef.current = terminal
+      fitRef.current = fitAddon
       searchRef.current = searchAddon
+      if (activeRef.current) requestAnimationFrame(activateTerminal)
+
+      const textarea = terminal.textarea
+      const onCompositionStart = () => setCompositionActive(true)
+      const onCompositionEnd = () => setCompositionActive(false)
+      const onTextareaBlur = () => setCompositionActive(false)
+      textarea?.addEventListener('compositionstart', onCompositionStart)
+      textarea?.addEventListener('compositionend', onCompositionEnd)
+      textarea?.addEventListener('blur', onTextareaBlur)
 
       terminal.attachCustomKeyEventHandler((event) => {
         const action = terminalShortcutAction(event, terminal.hasSelection())
@@ -159,30 +198,70 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       let lastSequence = 0
       let snapshotLoaded = false
       const pendingEvents: Array<{ sequence: number; data: string }> = []
+      let queuedOutput = ''
+      let outputFrame: number | null = null
+      let cursorSettleTimer: number | null = null
+      let writesInFlight = 0
+
+      const revealSettledCursor = () => {
+        if (cursorSettleTimer !== null) window.clearTimeout(cursorSettleTimer)
+        cursorSettleTimer = window.setTimeout(() => {
+          cursorSettleTimer = null
+          host.classList.remove('output-updating')
+        }, CURSOR_SETTLE_DELAY_MS)
+      }
+      const flushOutput = () => {
+        outputFrame = null
+        const data = queuedOutput
+        queuedOutput = ''
+        if (!data) return
+        writesInFlight += 1
+        terminal.write(data, () => {
+          writesInFlight -= 1
+          if (
+            writesInFlight === 0 &&
+            outputFrame === null &&
+            queuedOutput.length === 0
+          )
+            revealSettledCursor()
+        })
+      }
+      const enqueueOutput = (data: string) => {
+        if (!data) return
+        queuedOutput += data
+        host.classList.add('output-updating')
+        if (cursorSettleTimer !== null) {
+          window.clearTimeout(cursorSettleTimer)
+          cursorSettleTimer = null
+        }
+        if (outputFrame === null)
+          outputFrame = window.requestAnimationFrame(flushOutput)
+      }
+
       const unsubscribe = window.cmdWorkspace.terminal.onData((event) => {
         if (event.terminalId !== terminalId) return
         if (!snapshotLoaded) {
           pendingEvents.push(event)
         } else if (event.sequence > lastSequence) {
           lastSequence = event.sequence
-          terminal.write(event.data)
+          enqueueOutput(event.data)
         }
       })
       void window.cmdWorkspace.terminal
         .snapshot({ terminalId })
         .then((snapshot) => {
-          terminal.write(snapshot.output)
+          enqueueOutput(snapshot.output)
           lastSequence = snapshot.lastSequence
           snapshotLoaded = true
           for (const event of pendingEvents) {
             if (event.sequence > lastSequence) {
               lastSequence = event.sequence
-              terminal.write(event.data)
+              enqueueOutput(event.data)
             }
           }
           requestAnimationFrame(() => {
             fitAddon.fit()
-            terminal.focus()
+            if (activeRef.current) terminal.scrollToBottom()
           })
         })
         .catch((error: unknown) =>
@@ -201,7 +280,7 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
           .resize({ terminalId, cols: terminal.cols, rows: terminal.rows })
           .catch(() => undefined)
       })
-      observer.observe(hostRef.current)
+      observer.observe(host)
       return () => {
         if (feedbackTimerRef.current !== null)
           window.clearTimeout(feedbackTimerRef.current)
@@ -209,19 +288,34 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
         input.dispose()
         selection.dispose()
         observer.disconnect()
+        if (outputFrame !== null) window.cancelAnimationFrame(outputFrame)
+        if (cursorSettleTimer !== null) window.clearTimeout(cursorSettleTimer)
+        host.classList.remove('output-updating')
+        textarea?.removeEventListener('compositionstart', onCompositionStart)
+        textarea?.removeEventListener('compositionend', onCompositionEnd)
+        textarea?.removeEventListener('blur', onTextareaBlur)
+        setCompositionActive(false)
         terminalRef.current = null
+        fitRef.current = null
         searchRef.current = null
         terminal.dispose()
       }
-    }, [copySelection, onError, pasteClipboard, terminalId])
+    }, [
+      activateTerminal,
+      copySelection,
+      onError,
+      pasteClipboard,
+      setCompositionActive,
+      terminalId,
+    ])
 
     return (
       <div
         className="terminal-frame"
         onContextMenu={(event) => {
-          if (!terminalRef.current?.hasSelection()) return
           event.preventDefault()
-          void copySelection()
+          if (terminalRef.current?.hasSelection()) void copySelection()
+          else void pasteClipboard()
         }}
       >
         <div

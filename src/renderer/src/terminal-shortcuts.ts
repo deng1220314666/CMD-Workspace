@@ -46,7 +46,8 @@ export function terminalShortcutAction(
 ): TerminalShortcutAction | null {
   if (shouldCopyTerminalSelection(event, hasSelection)) return 'copy'
   const key = event.key.toLowerCase()
-  if (event.ctrlKey && event.shiftKey && !event.metaKey && key === 'v')
+  if (event.ctrlKey && !event.metaKey && key === 'v') return 'paste'
+  if (!event.ctrlKey && event.shiftKey && !event.metaKey && key === 'insert')
     return 'paste'
   if (event.ctrlKey && !event.shiftKey && !event.metaKey && key === 'f')
     return 'find'
