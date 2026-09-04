@@ -51,9 +51,20 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
     }, [onShortcut])
 
     const activateTerminal = useCallback(() => {
+      const terminal = terminalRef.current
+      if (!terminal) return
       fitRef.current?.fit()
-      terminalRef.current?.scrollToBottom()
-      terminalRef.current?.focus()
+      terminal.scrollToBottom()
+      terminal.refresh(0, terminal.rows - 1)
+      terminal.focus()
+
+      window.requestAnimationFrame(() => {
+        if (!activeRef.current || terminalRef.current !== terminal) return
+        fitRef.current?.fit()
+        terminal.scrollToBottom()
+        terminal.refresh(0, terminal.rows - 1)
+        terminal.focus()
+      })
     }, [])
 
     const setCompositionActive = useCallback((composing: boolean) => {

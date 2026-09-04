@@ -268,3 +268,15 @@ Acceptance checks:
 - [x] Switching projects or panes keeps runtime IDs/PIDs and does not recreate, restart, or stop a PTY.
 - [x] Pass formatting, lint, typecheck, 26 unit tests, production build, and terminal-manager lifecycle verification.
 - [ ] Complete a practical cursor check in a normal desktop session.
+
+## Active fix: latest terminal content after project switching
+
+Scope: keep every PTY and xterm instance alive while ensuring a terminal returning from a hidden project renders the newest buffered screen and prompt.
+
+Acceptance checks:
+
+- [x] Preserve terminal runtime IDs/PIDs and live output subscriptions while switching projects.
+- [x] After the active terminal slot has a usable layout, fit it, scroll to the bottom, refresh every visible row, and restore focus.
+- [x] Repeat the refresh on the following animation frame so a delayed ResizeObserver/layout update cannot leave stale DOM-renderer rows visible.
+- [x] Pass formatting, lint, typecheck, unit tests, production build, and terminal-manager lifecycle verification.
+- [ ] Complete a practical rapid project-switch check in a normal desktop session.
