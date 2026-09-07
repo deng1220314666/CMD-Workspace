@@ -6,6 +6,7 @@ import {
   addProject,
   emptyWorkspace,
   moveTerminal,
+  removeProject,
   removeTerminal,
   renameTerminal,
   selectProject,
@@ -122,5 +123,18 @@ describe('workspace state', () => {
     expect(state.projects[0].terminals[0].profileId).toBe('profile-b')
     state = removeTerminal(state, 'project-a', 'profile-b')
     expect(state.projects[0].activeProfileId).toBe('profile-a')
+  })
+
+  it('removes only the selected project and selects its neighbor', () => {
+    let state = addProject(emptyWorkspace, project('project-a'))
+    state = addProject(state, project('project-b'))
+    state = addProject(state, project('project-c'))
+    state = selectProject(state, 'project-b')
+    state = removeProject(state, 'project-b')
+    expect(state.projects.map((item) => item.projectId)).toEqual([
+      'project-a',
+      'project-c',
+    ])
+    expect(state.activeProjectId).toBe('project-c')
   })
 })

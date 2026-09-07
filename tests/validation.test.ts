@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest'
 import {
   createProfileSchema,
   createTerminalSchema,
+  deleteProjectSchema,
   reorderProfilesSchema,
   resizeTerminalSchema,
   saveSelectionSchema,
   updateProjectAnnotationsSchema,
   writeTerminalSchema,
+  saveAIProviderSchema,
 } from '../src/shared/validation'
 
 describe('terminal IPC validation', () => {
@@ -71,6 +73,15 @@ describe('terminal IPC validation', () => {
     ).toBe(false)
   })
 
+  it('requires a project UUID before removal', () => {
+    expect(
+      deleteProjectSchema.safeParse({ projectId: crypto.randomUUID() }).success,
+    ).toBe(true)
+    expect(
+      deleteProjectSchema.safeParse({ projectId: 'project-a' }).success,
+    ).toBe(false)
+  })
+
   it('bounds project annotations', () => {
     expect(
       updateProjectAnnotationsSchema.safeParse({
@@ -84,6 +95,27 @@ describe('terminal IPC validation', () => {
         projectId: crypto.randomUUID(),
         remarkName: 'x'.repeat(121),
         purpose: null,
+      }).success,
+    ).toBe(false)
+  })
+
+  it('validates bounded AI provider settings', () => {
+    expect(
+      saveAIProviderSchema.safeParse({
+        name: 'Local Ollama',
+        type: 'openai-compatible',
+        baseUrl: 'http://localhost:11434/v1',
+        model: 'local-model',
+        timeoutMs: 15_000,
+        apiKey: 'FAKE_TEST_KEY',
+      }).success,
+    ).toBe(true)
+    expect(
+      saveAIProviderSchema.safeParse({
+        name: 'Bad timeout',
+        type: 'openai',
+        model: 'model',
+        timeoutMs: 0,
       }).success,
     ).toBe(false)
   })

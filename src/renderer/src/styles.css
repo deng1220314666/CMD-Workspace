@@ -252,11 +252,10 @@ button {
 }
 .project-edit-button {
   position: absolute;
-  top: 50%;
-  right: 7px;
-  width: 24px;
-  height: 24px;
-  translate: 0 -50%;
+  right: 5px;
+  bottom: 3px;
+  width: 20px;
+  height: 20px;
   border: 0;
   border-radius: 4px;
   background: transparent;
@@ -272,6 +271,30 @@ button {
 .project-edit-button:hover {
   background: #243744;
   color: var(--accent);
+}
+.project-remove-button {
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #8294a1;
+  cursor: pointer;
+}
+.project-remove-button:hover,
+.project-remove-button:focus-visible {
+  background: #392027;
+  color: #ef8b91;
+}
+.dialog-warning {
+  padding: 8px;
+  border: 1px solid #754149;
+  border-radius: 4px;
+  background: #27171b;
+  color: #efadb1;
 }
 .running-count {
   display: grid;
@@ -1182,5 +1205,215 @@ button:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .power-rail span {
     animation: none;
+  }
+}
+.ai-settings-trigger {
+  align-self: stretch;
+  padding-inline: 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--panel-raised);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.ai-settings-trigger:hover:not(:disabled),
+.ai-settings-trigger:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.ai-settings-trigger:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ai-settings-trigger:active:not(:disabled) {
+  background: var(--accent);
+  color: var(--canvas);
+}
+
+.ai-settings-backdrop {
+  z-index: 40;
+}
+
+.ai-settings-dialog {
+  color-scheme: dark;
+  width: min(760px, calc(100vw - 48px));
+  max-height: calc(100vh - 48px);
+  overflow: hidden;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--text);
+  box-shadow: 0 20px 60px #0009;
+}
+
+.ai-settings-dialog button {
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  padding: 7px 11px;
+  background: var(--panel-raised);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.ai-settings-dialog button:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.ai-settings-dialog button:focus-visible {
+  outline-color: var(--accent);
+}
+.ai-settings-dialog button:disabled {
+  cursor: default;
+}
+
+.ai-settings-header,
+.ai-settings-body {
+  display: flex;
+}
+
+.ai-settings-header {
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-raised);
+}
+
+.ai-settings-header h2 {
+  margin: 2px 0 0;
+}
+.ai-settings-body {
+  min-height: 440px;
+}
+.ai-provider-list {
+  display: flex;
+  width: 220px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  overflow: auto;
+  border-right: 1px solid var(--line);
+  background: var(--sidebar);
+}
+.ai-provider-list button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  text-align: left;
+}
+.ai-provider-list button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 2px 0 var(--accent);
+}
+.ai-provider-list button.active strong {
+  color: var(--accent);
+}
+.ai-provider-list span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.ai-provider-form {
+  display: grid;
+  flex: 1;
+  gap: 12px;
+  padding: 18px;
+  overflow: auto;
+}
+.ai-provider-form label {
+  display: grid;
+  gap: 6px;
+  color: var(--text);
+  font-size: 12px;
+}
+.ai-provider-form input,
+.ai-provider-form select {
+  width: 100%;
+  min-height: 32px;
+  padding: 7px 9px;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: var(--canvas);
+  color: var(--text);
+  caret-color: var(--accent);
+  font: inherit;
+}
+.ai-provider-form input::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+.ai-provider-form input:focus-visible,
+.ai-provider-form select:focus-visible {
+  border-color: var(--accent);
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 1px;
+}
+.ai-provider-form input:disabled,
+.ai-provider-form select:disabled {
+  border-color: var(--line);
+  background: var(--sidebar);
+  color: var(--muted);
+}
+.ai-provider-form option {
+  background: var(--panel);
+  color: var(--text);
+}
+.ai-destination {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+.ai-test-result {
+  margin: 0;
+  padding: 8px;
+  border: 1px solid;
+  border-radius: 4px;
+}
+.ai-test-result.success {
+  border-color: var(--green);
+  background: color-mix(in srgb, var(--green) 8%, var(--panel));
+  color: var(--green);
+}
+.ai-test-result.failure {
+  border-color: #754149;
+  color: #ef8b91;
+}
+.ai-settings-actions {
+  flex-wrap: wrap;
+}
+.ai-settings-actions button[type='submit'] {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--canvas);
+  font-weight: 600;
+}
+.ai-settings-actions button[type='submit']:hover:not(:disabled) {
+  background: var(--accent);
+  color: var(--canvas);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.ai-settings-actions .danger-button {
+  border-color: #8d4650;
+  background: #5b2931;
+  color: #ffd9dc;
+}
+.ai-settings-actions .danger-button:hover:not(:disabled) {
+  border-color: #ef8b91;
+  background: #5b2931;
+}
+
+@media (max-width: 760px) {
+  .ai-settings-body {
+    flex-direction: column;
+  }
+  .ai-provider-list {
+    width: auto;
+    max-height: 140px;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
   }
 }

@@ -1,6 +1,6 @@
 import type { AppInfo } from '../../../shared/terminal'
 import type { WorkspaceProject } from '../workspace-state'
-import { FolderIcon, MoreIcon, PlusIcon } from './icons'
+import { CloseIcon, FolderIcon, MoreIcon, PlusIcon } from './icons'
 import { isLiveStatus } from './terminal-status'
 
 interface ProjectSidebarProps {
@@ -11,6 +11,7 @@ interface ProjectSidebarProps {
   platform: AppInfo['platform'] | undefined
   onSelectProject: (projectId: string) => void
   onEditProject: (project: WorkspaceProject) => void
+  onRemoveProject: (project: WorkspaceProject) => void
   onImportProject: () => void
 }
 
@@ -22,6 +23,7 @@ export function ProjectSidebar({
   platform,
   onSelectProject,
   onEditProject,
+  onRemoveProject,
   onImportProject,
 }: ProjectSidebarProps) {
   return (
@@ -82,12 +84,22 @@ export function ProjectSidebar({
               </button>
               <button
                 className="project-edit-button icon-button"
-                aria-label={`Edit notes for ${displayName}`}
-                title="Edit project notes"
+                aria-label={`Edit ${displayName}`}
+                title="Edit project info"
                 onClick={() => onEditProject(project)}
               >
                 <MoreIcon size={16} />
               </button>
+              {active && (
+                <button
+                  className="project-remove-button icon-button"
+                  aria-label={`Remove ${displayName} from workspace`}
+                  title="Remove from workspace"
+                  onClick={() => onRemoveProject(project)}
+                >
+                  <CloseIcon size={13} />
+                </button>
+              )}
             </div>
           )
         })}

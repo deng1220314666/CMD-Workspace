@@ -1,7 +1,7 @@
 import { getTableColumns } from 'drizzle-orm'
 import { describe, expect, it } from 'vitest'
 import { assertAcyclicDependencies } from '../src/database/dependency-graph'
-import { terminalRuns } from '../src/database/schema'
+import { aiProviders, terminalRuns } from '../src/database/schema'
 
 describe('persistence contract', () => {
   it('rejects self dependencies, unknown ownership, and cycles', () => {
@@ -31,5 +31,13 @@ describe('persistence contract', () => {
   it('keeps terminal output out of PostgreSQL run records', () => {
     expect(Object.keys(getTableColumns(terminalRuns))).not.toContain('output')
     expect(Object.keys(getTableColumns(terminalRuns))).not.toContain('buffer')
+  })
+
+  it('keeps AI credential material out of PostgreSQL', () => {
+    const columns = Object.keys(getTableColumns(aiProviders))
+    expect(columns).toContain('credentialId')
+    expect(columns).not.toContain('apiKey')
+    expect(columns).not.toContain('secret')
+    expect(columns).not.toContain('ciphertext')
   })
 })

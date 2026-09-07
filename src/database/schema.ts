@@ -31,6 +31,43 @@ export const restartPolicy = pgEnum('terminal_restart_policy', [
   'always',
 ])
 
+export const aiProviderType = pgEnum('ai_provider_type', [
+  'openai',
+  'openai-compatible',
+])
+export const aiProviderProtocol = pgEnum('ai_provider_protocol', [
+  'responses',
+  'chat-completions',
+])
+
+export const aiProviders = pgTable(
+  'ai_providers',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    name: text('name').notNull(),
+    type: aiProviderType('type').notNull(),
+    protocol: aiProviderProtocol('protocol').notNull(),
+    baseUrl: text('base_url').notNull(),
+    model: text('model').notNull(),
+    credentialId: uuid('credential_id').notNull().unique(),
+    timeoutMs: integer('timeout_ms').notNull().default(15_000),
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('ai_providers_type_idx').on(table.type),
+    check(
+      'ai_providers_timeout_range',
+      sql`${table.timeoutMs} between 1000 and 120000`,
+    ),
+  ],
+)
+
 export const projects = pgTable(
   'projects',
   {

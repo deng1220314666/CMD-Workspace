@@ -16,6 +16,7 @@
     "smoke:pty": "cross-env ELECTRON_RUN_AS_NODE=1 electron tests/runtime-smoke.cjs",
     "smoke:manager": "cross-env ELECTRON_RUN_AS_NODE=1 electron tests/terminal-manager-smoke.cjs",
     "smoke:db": "cross-env ELECTRON_RUN_AS_NODE=1 electron tests/database-smoke.cjs",
+    "smoke:credential": "electron tests/credential-smoke.cjs",
     "db:create": "cross-env ELECTRON_RUN_AS_NODE=1 electron tests/create-development-database.cjs",
     "db:generate": "drizzle-kit generate",
     "build": "pnpm clean && tsc -p tsconfig.electron.json && vite build",
@@ -77,6 +78,7 @@
     "npmRebuild": false,
     "win": {
       "target": "dir",
+      "executableName": "CMD Workspace",
       "icon": "build/icon.ico"
     }
   },

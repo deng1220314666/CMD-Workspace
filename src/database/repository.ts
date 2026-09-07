@@ -10,6 +10,7 @@ import type {
   WorkspaceSelection,
 } from '../shared/persistence'
 import {
+  aiProviders,
   applicationState,
   projects,
   taskDependencies,
@@ -23,6 +24,7 @@ import {
 } from './dependency-graph'
 
 type Database = NodePgDatabase<{
+  aiProviders: typeof aiProviders
   applicationState: typeof applicationState
   projects: typeof projects
   taskDependencies: typeof taskDependencies
@@ -51,6 +53,7 @@ export class PersistenceRepository {
     const db = drizzle(pool, {
       schema: {
         applicationState,
+        aiProviders,
         projects,
         taskDependencies,
         tasks,
@@ -123,6 +126,53 @@ export class PersistenceRepository {
     }
   }
 
+  async listAIProviders() {
+    return this.db
+      .select()
+      .from(aiProviders)
+      .orderBy(asc(aiProviders.createdAt))
+  }
+
+  async findAIProvider(providerId: string) {
+    const rows = await this.db
+      .select()
+      .from(aiProviders)
+      .where(eq(aiProviders.id, providerId))
+      .limit(1)
+    return rows[0] ?? null
+  }
+
+  async saveAIProvider(input: typeof aiProviders.$inferInsert) {
+    const [saved] = await this.db
+      .insert(aiProviders)
+      .values(input)
+      .onConflictDoUpdate({
+        target: aiProviders.id,
+        set: {
+          name: input.name,
+          type: input.type,
+          protocol: input.protocol,
+          baseUrl: input.baseUrl,
+          model: input.model,
+          credentialId: input.credentialId,
+          timeoutMs: input.timeoutMs,
+          enabled: input.enabled,
+          updatedAt: new Date(),
+        },
+      })
+      .returning()
+    return saved
+  }
+
+  async deleteAIProvider(providerId: string) {
+    const [deleted] = await this.db
+      .delete(aiProviders)
+      .where(eq(aiProviders.id, providerId))
+      .returning()
+    if (!deleted) throw new Error('AI provider does not exist')
+    return deleted
+  }
+
   async importProject(input: {
     name: string
     displayPath: string
@@ -182,6 +232,16 @@ export class PersistenceRepository {
       .where(eq(projects.id, projectId))
       .returning({ id: projects.id })
     if (!changed.length) throw new Error('Project does not exist')
+  }
+
+  async deleteProject(projectId: string): Promise<void> {
+    const deleted = await this.db.transaction(async (transaction) =>
+      transaction
+        .delete(projects)
+        .where(eq(projects.id, projectId))
+        .returning({ id: projects.id }),
+    )
+    if (!deleted.length) throw new Error('Project does not exist')
   }
 
   async createProfile(input: {

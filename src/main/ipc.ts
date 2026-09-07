@@ -1,6 +1,11 @@
 import { realpath, stat } from 'node:fs/promises'
 import path from 'node:path'
-import { BrowserWindow, dialog, ipcMain } from 'electron'
+import {
+  BrowserWindow,
+  dialog,
+  ipcMain,
+  type IpcMainInvokeEvent,
+} from 'electron'
 import type { AppInfo, ProjectInfo } from '../shared/terminal'
 import {
   TERMINAL_DATA_CHANNEL,
@@ -11,11 +16,14 @@ import {
   closeTerminalSchema,
   createProfileSchema,
   deleteProfileSchema,
+  deleteProjectSchema,
   renameProfileSchema,
   reorderProfilesSchema,
   resizeTerminalSchema,
   restartTerminalSchema,
   saveSelectionSchema,
+  aiProviderIdSchema,
+  saveAIProviderSchema,
   terminalIdSchema,
   updateProjectAnnotationsSchema,
   validationMessage,
@@ -27,6 +35,8 @@ import {
 } from '../database/repository'
 import { TerminalManager } from './terminal-manager'
 import { TerminalRunTracker } from './run-tracker'
+import { CredentialService } from './ai/credential-service'
+import { AIProviderService } from './ai/provider-service'
 
 function parse<T>(
   schema: {
@@ -44,10 +54,21 @@ function parse<T>(
   return result.data
 }
 
+function assertTrustedAIRequest(event: IpcMainInvokeEvent) {
+  const owner = BrowserWindow.fromWebContents(event.sender)
+  if (
+    !owner ||
+    owner.isDestroyed() ||
+    event.senderFrame !== event.sender.mainFrame
+  )
+    throw new Error('AI request was rejected')
+}
+
 export function registerIpc(
   getAppInfo: () => AppInfo,
   repository: PersistenceRepository | null,
   applicationInstanceId: string,
+  credentialStorePath: string,
 ): () => void {
   const publish = (channel: string, payload: unknown) => {
     for (const window of BrowserWindow.getAllWindows()) {
@@ -69,6 +90,12 @@ export function registerIpc(
       )
     },
   })
+  const aiService = repository
+    ? new AIProviderService(
+        repository,
+        new CredentialService(credentialStorePath),
+      )
+    : null
   const requireRepository = () => {
     if (!repository)
       throw new Error(
@@ -76,8 +103,39 @@ export function registerIpc(
       )
     return repository
   }
+  const requireAIService = () => {
+    if (!aiService)
+      throw new Error('AI settings require an available PostgreSQL connection')
+    return aiService
+  }
 
   ipcMain.handle('app:info', () => getAppInfo())
+  ipcMain.handle('ai:list-providers', (event) => {
+    assertTrustedAIRequest(event)
+    return requireAIService().listProviders()
+  })
+  ipcMain.handle('ai:save-provider', (event, value) => {
+    assertTrustedAIRequest(event)
+    return requireAIService().saveProvider(parse(saveAIProviderSchema, value))
+  })
+  ipcMain.handle('ai:delete-provider', (event, value) => {
+    assertTrustedAIRequest(event)
+    return requireAIService().deleteProvider(
+      parse(aiProviderIdSchema, value).providerId,
+    )
+  })
+  ipcMain.handle('ai:delete-credential', (event, value) => {
+    assertTrustedAIRequest(event)
+    return requireAIService().deleteCredential(
+      parse(aiProviderIdSchema, value).providerId,
+    )
+  })
+  ipcMain.handle('ai:test-connection', (event, value) => {
+    assertTrustedAIRequest(event)
+    return requireAIService().testConnection(
+      parse(aiProviderIdSchema, value).providerId,
+    )
+  })
   ipcMain.handle('project:import', async () => {
     const selection = await dialog.showOpenDialog({
       title: 'Import local project',
@@ -115,6 +173,11 @@ export function registerIpc(
       purpose: request.purpose || null,
     })
   })
+  ipcMain.handle('persistence:delete-project', (_event, value) =>
+    requireRepository().deleteProject(
+      parse(deleteProjectSchema, value).projectId,
+    ),
+  )
   ipcMain.handle('persistence:create-profile', (_event, value) => {
     const request = parse(createProfileSchema, value)
     const shell =
@@ -198,9 +261,15 @@ export function registerIpc(
     manager.dispose()
     for (const channel of [
       'app:info',
+      'ai:list-providers',
+      'ai:save-provider',
+      'ai:delete-provider',
+      'ai:delete-credential',
+      'ai:test-connection',
       'project:import',
       'persistence:load-workspace',
       'persistence:update-project-annotations',
+      'persistence:delete-project',
       'persistence:create-profile',
       'persistence:rename-profile',
       'persistence:reorder-profiles',

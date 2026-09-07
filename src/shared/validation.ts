@@ -3,6 +3,7 @@ import { z } from 'zod'
 const terminalId = z.string().uuid()
 const profileId = z.string().uuid()
 const projectId = z.string().uuid()
+const providerId = z.string().uuid()
 const dimensions = {
   cols: z.number().int().min(2).max(500),
   rows: z.number().int().min(1).max(300),
@@ -53,6 +54,18 @@ export const updateProjectAnnotationsSchema = z.object({
   projectId,
   remarkName: z.string().trim().max(120).nullable(),
   purpose: z.string().trim().max(500).nullable(),
+})
+export const deleteProjectSchema = z.object({ projectId })
+
+export const aiProviderIdSchema = z.object({ providerId })
+export const saveAIProviderSchema = z.object({
+  providerId: providerId.optional(),
+  name: z.string().trim().min(1).max(120),
+  type: z.enum(['openai', 'openai-compatible']),
+  baseUrl: z.string().trim().max(2048).optional(),
+  model: z.string().trim().min(1).max(200),
+  timeoutMs: z.number().int().min(1_000).max(120_000),
+  apiKey: z.string().trim().min(1).max(32_768).optional(),
 })
 
 export function validationMessage(error: z.ZodError): string {

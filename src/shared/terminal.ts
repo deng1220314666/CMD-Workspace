@@ -107,6 +107,7 @@ export interface ClipboardApi {
 }
 
 export interface CmdWorkspaceApi {
+  ai: import('./ai').AIProviderApi
   terminal: TerminalApi
   project: ProjectApi
   clipboard: ClipboardApi

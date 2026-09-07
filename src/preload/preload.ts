@@ -10,6 +10,16 @@ import {
 } from '../shared/terminal'
 
 const api: CmdWorkspaceApi = {
+  ai: {
+    listProviders: () => ipcRenderer.invoke('ai:list-providers'),
+    saveProvider: (request) => ipcRenderer.invoke('ai:save-provider', request),
+    deleteProvider: (request) =>
+      ipcRenderer.invoke('ai:delete-provider', request),
+    deleteCredential: (request) =>
+      ipcRenderer.invoke('ai:delete-credential', request),
+    testConnection: (request) =>
+      ipcRenderer.invoke('ai:test-connection', request),
+  },
   getAppInfo: () => ipcRenderer.invoke('app:info'),
   project: {
     import: () => ipcRenderer.invoke('project:import'),
@@ -31,6 +41,8 @@ const api: CmdWorkspaceApi = {
     loadWorkspace: () => ipcRenderer.invoke('persistence:load-workspace'),
     updateProjectAnnotations: (request) =>
       ipcRenderer.invoke('persistence:update-project-annotations', request),
+    deleteProject: (request) =>
+      ipcRenderer.invoke('persistence:delete-project', request),
     createProfile: (request) =>
       ipcRenderer.invoke('persistence:create-profile', request),
     renameProfile: (request) =>

@@ -58,6 +58,10 @@ export interface ProjectAnnotationUpdateRequest {
   purpose: string | null
 }
 
+export interface ProjectDeleteRequest {
+  projectId: string
+}
+
 export type SelectionSaveRequest = WorkspaceSelection
 
 export interface PersistenceApi {
@@ -65,6 +69,7 @@ export interface PersistenceApi {
   updateProjectAnnotations(
     request: ProjectAnnotationUpdateRequest,
   ): Promise<void>
+  deleteProject(request: ProjectDeleteRequest): Promise<void>
   createProfile(
     request: ProfileCreateRequest,
   ): Promise<PersistedTerminalProfile>

@@ -105,6 +105,25 @@ export function updateProjectAnnotations(
   }))
 }
 
+export function removeProject(
+  state: WorkspaceState,
+  projectId: string,
+): WorkspaceState {
+  const removedIndex = state.projects.findIndex(
+    (project) => project.projectId === projectId,
+  )
+  if (removedIndex < 0) return state
+  const projects = state.projects.filter(
+    (project) => project.projectId !== projectId,
+  )
+  const activeProjectId =
+    state.activeProjectId === projectId
+      ? (projects[Math.min(removedIndex, projects.length - 1)]?.projectId ??
+        null)
+      : state.activeProjectId
+  return { projects, activeProjectId }
+}
+
 export function addProfile(
   state: WorkspaceState,
   profile: PersistedTerminalProfile,

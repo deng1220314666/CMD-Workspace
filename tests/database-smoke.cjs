@@ -24,6 +24,28 @@ async function run() {
     migrationsFolder,
   )
 
+  const aiProviderId = randomUUID()
+  const credentialId = randomUUID()
+  await repository.saveAIProvider({
+    id: aiProviderId,
+    name: 'AI provider migration smoke',
+    type: 'openai',
+    protocol: 'responses',
+    baseUrl: 'https://api.openai.com/v1',
+    model: 'fake-test-model',
+    credentialId,
+    timeoutMs: 15000,
+    enabled: true,
+  })
+  const restoredAIProvider = await repository.findAIProvider(aiProviderId)
+  if (
+    !restoredAIProvider ||
+    restoredAIProvider.credentialId !== credentialId ||
+    !(await repository.listAIProviders()).some((row) => row.id === aiProviderId)
+  )
+    throw new Error('AI provider configuration did not survive persistence')
+  await repository.deleteAIProvider(aiProviderId)
+
   const cleanupPool = new Pool({ connectionString: process.env.DATABASE_URL })
   await cleanupPool.query(
     "delete from projects where name like 'M3 verify %' or name like 'Foreign project %'",
@@ -166,9 +188,7 @@ async function run() {
   }
   if (!ownershipConstraint)
     throw new Error('Database accepted a profile owned by another project')
-  await verificationPool.query('delete from projects where id = $1', [
-    foreignProject.projectId,
-  ])
+  await repository.deleteProject(foreignProject.projectId)
 
   let actionableConstraint = false
   try {
@@ -185,9 +205,7 @@ async function run() {
   if (!actionableConstraint)
     throw new Error('Foreign-key failure was not reported actionably')
 
-  await verificationPool.query('delete from projects where id = $1', [
-    project.projectId,
-  ])
+  await repository.deleteProject(project.projectId)
   const cascaded = await verificationPool.query(
     'select (select count(*) from terminal_profiles where project_id = $1)::integer as profiles, (select count(*) from tasks where project_id = $1)::integer as tasks, (select count(*) from terminal_runs where profile_id in ($2, $3))::integer as runs',
     [project.projectId, first.profileId, second.profileId],
@@ -205,7 +223,7 @@ async function run() {
   await verificationPool.end()
   await repository.close()
   console.log(
-    `DATABASE_SMOKE_OK emptyBefore=${before.rows[0].count === 0} repeatMigration=true restored=true annotations=true interrupted=${interrupted} noOutputColumns=true uniquePath=true ownership=true actionableErrors=true constraints=true cascades=true`,
+    `DATABASE_SMOKE_OK emptyBefore=${before.rows[0].count === 0} repeatMigration=true restored=true aiProviders=true annotations=true interrupted=${interrupted} noOutputColumns=true uniquePath=true ownership=true actionableErrors=true constraints=true cascades=true`,
   )
 }
 

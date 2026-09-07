@@ -9,12 +9,14 @@ import { ProjectSidebar } from './components/ProjectSidebar'
 import { TerminalWorkspace } from './components/TerminalWorkspace'
 import { isLiveStatus } from './components/terminal-status'
 import { WorkspaceLayout } from './components/WorkspaceLayout'
+import { AISettings } from './components/AISettings'
 import {
   addProfile,
   addProject,
   attachRuntime,
   emptyWorkspace,
   moveTerminal,
+  removeProject,
   removeTerminal,
   renameTerminal,
   selectionFromWorkspace,
@@ -39,6 +41,11 @@ interface ProjectEditor {
   purpose: string
 }
 
+interface PendingProjectRemoval {
+  project: WorkspaceProject
+  liveTerminalCount: number
+}
+
 export function App() {
   const [workspace, setWorkspace] = useState(emptyWorkspace)
   const [hydrated, setHydrated] = useState(false)
@@ -50,6 +57,9 @@ export function App() {
   const [draftTitle, setDraftTitle] = useState('')
   const [pendingAction, setPendingAction] = useState<PendingAction | null>(null)
   const [projectEditor, setProjectEditor] = useState<ProjectEditor | null>(null)
+  const [pendingProjectRemoval, setPendingProjectRemoval] =
+    useState<PendingProjectRemoval | null>(null)
+  const [aiSettingsOpen, setAISettingsOpen] = useState(false)
   const reportError = useCallback((message: string) => setError(message), [])
 
   const activeProject = useMemo(
@@ -319,6 +329,41 @@ export function App() {
     }
   }
 
+  const requestProjectRemoval = (project: WorkspaceProject) => {
+    setPendingProjectRemoval({
+      project,
+      liveTerminalCount: project.terminals.filter((tab) =>
+        isLiveStatus(tab.runtime?.status),
+      ).length,
+    })
+  }
+
+  const performProjectRemoval = async (mode: TerminalCloseMode) => {
+    if (!pendingProjectRemoval) return
+    const { project } = pendingProjectRemoval
+    setBusy(true)
+    setError(null)
+    try {
+      for (const tab of project.terminals) {
+        if (!tab.runtime) continue
+        await window.cmdWorkspace.terminal.close({
+          terminalId: tab.runtime.terminalId,
+          mode,
+          expectedPid: tab.runtime.pid,
+        })
+      }
+      await window.cmdWorkspace.persistence.deleteProject({
+        projectId: project.projectId,
+      })
+      setWorkspace((current) => removeProject(current, project.projectId))
+      setPendingProjectRemoval(null)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <WorkspaceLayout
       sidebar={
@@ -338,6 +383,7 @@ export function App() {
               purpose: project.purpose ?? '',
             })
           }
+          onRemoveProject={requestProjectRemoval}
           onImportProject={() => void importProject()}
         />
       }
@@ -392,6 +438,13 @@ export function App() {
                 <p>{activeProject.path}</p>
               </div>
               <div className="session-readout">
+                <button
+                  className="ai-settings-trigger"
+                  type="button"
+                  onClick={() => setAISettingsOpen(true)}
+                >
+                  AI Settings
+                </button>
                 <div>
                   <span>Process</span>
                   <strong>PID {activeTab?.runtime?.pid ?? '—'}</strong>
@@ -509,6 +562,70 @@ export function App() {
         </div>
       )}
 
+      {pendingProjectRemoval && (
+        <div className="modal-backdrop" role="presentation">
+          <div
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="remove-project-title"
+          >
+            <p className="eyebrow">REMOVE FROM WORKSPACE</p>
+            <h2 id="remove-project-title">
+              Remove{' '}
+              {pendingProjectRemoval.project.remarkName ??
+                pendingProjectRemoval.project.name}
+              ?
+            </h2>
+            <p>
+              This removes the project and its saved terminal configuration from
+              CMD Workspace. It will not delete or modify any folder or file on
+              disk.
+            </p>
+            {pendingProjectRemoval.liveTerminalCount > 0 && (
+              <p className="dialog-warning">
+                {pendingProjectRemoval.liveTerminalCount} terminal process(es)
+                are running and must be stopped before removal.
+              </p>
+            )}
+            <div className="dialog-actions">
+              <button
+                type="button"
+                onClick={() => setPendingProjectRemoval(null)}
+                disabled={busy}
+              >
+                Cancel
+              </button>
+              {pendingProjectRemoval.liveTerminalCount > 0 && (
+                <button
+                  type="button"
+                  onClick={() => void performProjectRemoval('graceful')}
+                  disabled={busy}
+                >
+                  Stop gracefully and remove
+                </button>
+              )}
+              <button
+                className="danger-button"
+                type="button"
+                onClick={() =>
+                  void performProjectRemoval(
+                    pendingProjectRemoval.liveTerminalCount > 0
+                      ? 'force'
+                      : 'graceful',
+                  )
+                }
+                disabled={busy}
+              >
+                {pendingProjectRemoval.liveTerminalCount > 0
+                  ? 'Force stop and remove'
+                  : 'Remove from workspace'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {projectEditor && (
         <div className="modal-backdrop" role="presentation">
           <form
@@ -565,6 +682,11 @@ export function App() {
           </form>
         </div>
       )}
+      <AISettings
+        open={aiSettingsOpen}
+        onClose={() => setAISettingsOpen(false)}
+        onError={reportError}
+      />
     </WorkspaceLayout>
   )
 }

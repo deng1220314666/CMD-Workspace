@@ -99,6 +99,7 @@ app.whenReady().then(async () => {
     }),
     repository,
     randomUUID(),
+    path.join(app.getPath('userData'), 'credentials', 'ai-credentials.json'),
   )
   createWindow()
   app.on('activate', () => {

@@ -280,3 +280,32 @@ Acceptance checks:
 - [x] Repeat the refresh on the following animation frame so a delayed ResizeObserver/layout update cannot leave stale DOM-renderer rows visible.
 - [x] Pass formatting, lint, typecheck, unit tests, production build, and terminal-manager lifecycle verification.
 - [ ] Complete a practical rapid project-switch check in a normal desktop session.
+
+## Stage 3.1: AI providers and secure credentials
+
+AI settings theme alignment: reuse workspace surface, text, border and amber accent tokens; explicitly theme inputs, selects, provider rows and buttons, including focus, disabled and result states. Acceptance: formatting, lint, TypeScript and renderer build pass; verify desktop colors visually when a desktop session is available.
+
+Scope: add provider-neutral contracts, OpenAI and OpenAI-compatible configuration, device-local `safeStorage` credentials, sanitized connection testing, and an AI settings surface. Do not add chat, terminal context, or command execution.
+
+Acceptance checks:
+
+- [x] Persist provider metadata in PostgreSQL without API keys or credential ciphertext.
+- [x] Encrypt API keys beneath Electron `userData`; expose only credential presence/status to the renderer.
+- [x] Validate provider URLs and require a replacement credential when a configured destination origin changes.
+- [x] Test OpenAI Responses and OpenAI-compatible Chat Completions connections in the main process with bounded timeouts and sanitized errors.
+- [x] Provide create, edit, delete, credential-delete, and connection-test UI states.
+- [ ] Pass migrations, lint, typecheck, unit tests, production build, packaging, and credential leakage review.
+- [ ] Verify Windows DPAPI encryption in a normal signed-in desktop session; the managed runner reports `safeStorage` unavailable and the application blocks plaintext fallback as designed.
+
+## Active fix: remove a project from the workspace
+
+Scope: remove an imported project from CMD Workspace without deleting or modifying its directory or files. Require explicit process-stop confirmation when the project owns live terminals.
+
+Acceptance checks:
+
+- [x] Keep the ellipsis as the direct Edit action and show an icon-only Remove action on the selected project row.
+- [x] State clearly that removal affects only CMD Workspace records, never disk files.
+- [x] Close every retained terminal runtime using the explicitly confirmed graceful or force mode before deleting persisted project configuration.
+- [x] Delete the project transactionally and rely on existing foreign-key cascades for owned profiles, runs, tasks, and dependencies.
+- [x] Select a neighboring project after removal and keep unrelated project terminals running.
+- [x] Pass formatting, lint, typecheck, unit tests, database and terminal-manager smoke tests, production build, and diff review.
