@@ -1,5 +1,34 @@
 # Implementation plan
 
+## Completed fix: Windows installer executable resources
+
+Scope: replace electron-builder 26.0.12's legacy rcedit resource editing with the resedit-based 26.11.1 release and restore the tracked application icon. Preserve Electron and application runtime behavior.
+
+Acceptance checks:
+
+- [x] Reproduce rcedit failure on a packaged executable copy while the original Electron executable copy succeeds.
+- [x] Pin the updated builder and refresh the pnpm lockfile.
+- [x] Restore build/icon.ico and verify executable icon and version metadata.
+- [x] Generate the x64 NSIS installer with resource editing and ASAR integrity retained.
+- [x] Run applicable static checks and review the final diff; record environment limitations.
+
+Verification (2026-09-14): TypeScript, lint, production compilation, and changed-file formatting pass. electron-builder 26.11.1 generated the NSIS installer and blockmap. The packaged EXE contains icon resources, version 0.1.0, and the INTEGRITY/ELECTRONASAR resource. This runner uses Electron in Node mode, so packaging was invoked directly with an ignored .tools shim to disable Electron argument/ASAR handling; normal Node users retain the existing package:installer command. Vitest reports no test files because the working tree's tests were already deleted. Installation and desktop launch were not exercised. pnpm reported optional Squirrel/macOS peer-version warnings; the requested Windows NSIS target built successfully.
+
+## Active fix: follow latest terminal output
+
+Scope: keep the terminal viewport at the latest output after asynchronous writes, project activation, and resize. Preserve deliberate history scrolling and stable xterm/PTY instances.
+
+Acceptance checks:
+
+- [x] Follow output after xterm has parsed each batch, including snapshot restoration.
+- [x] Resume following when a project/pane is activated or the user types; retain bottom alignment after resize.
+- [x] Allow scrolling up to read history and resume following when scrolled back to the bottom.
+- [x] Pass changed-file formatting, lint, TypeScript, 33 unit tests, and production compilation.
+- [x] Browser-check the actual TerminalView/xterm with simulated IPC output: snapshot, streaming, history retention, resume, activation during pending output, resize, typing, and repeated hide/show preserve the xterm DOM instance and end at the bottom.
+- [ ] Verify streaming CLI replies, history scrolling, and rapid project switching in a desktop window.
+
+Verification note (2026-09-07): terminal-manager smoke returned exit 0 and TERMINAL_MANAGER_SMOKE_OK, but its ConPTY helper emitted AttachConsole failed; clean process-tree shutdown verification remains limited in this runner. Browser checks use the real renderer component and simulated IPC, not a full Electron/CLI session.
+
 ## M0 — Repository foundation
 
 - Initialize Electron + React + TypeScript + Vite with pnpm.

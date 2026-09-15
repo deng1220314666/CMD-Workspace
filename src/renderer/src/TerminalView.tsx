@@ -40,6 +40,7 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
     const terminalRef = useRef<Terminal | null>(null)
     const fitRef = useRef<FitAddon | null>(null)
     const activeRef = useRef(active)
+    const followOutputRef = useRef(true)
     const searchRef = useRef<SearchAddon | null>(null)
     const onShortcutRef = useRef(onShortcut)
     const feedbackTimerRef = useRef<number | null>(null)
@@ -53,6 +54,7 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
     const activateTerminal = useCallback(() => {
       const terminal = terminalRef.current
       if (!terminal) return
+      followOutputRef.current = true
       fitRef.current?.fit()
       terminal.scrollToBottom()
       terminal.refresh(0, terminal.rows - 1)
@@ -126,8 +128,9 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
           terminalRef.current?.clear()
           terminalRef.current?.focus()
         },
-        findNext: (query) =>
-          Boolean(
+        findNext: (query) => {
+          if (query) followOutputRef.current = false
+          return Boolean(
             query &&
               searchRef.current?.findNext(query, {
                 incremental: true,
@@ -138,9 +141,12 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
                   activeMatchColorOverviewRuler: '#ffffff',
                 },
               }),
-          ),
-        findPrevious: (query) =>
-          Boolean(query && searchRef.current?.findPrevious(query)),
+          )
+        },
+        findPrevious: (query) => {
+          if (query) followOutputRef.current = false
+          return Boolean(query && searchRef.current?.findPrevious(query))
+        },
         clearSearch: () => searchRef.current?.clearDecorations(),
       }),
       [copySelection, pasteClipboard],
@@ -213,6 +219,59 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       let outputFrame: number | null = null
       let cursorSettleTimer: number | null = null
       let writesInFlight = 0
+      let fitting = false
+      let disposed = false
+
+      const followOutput = () => {
+        if (!disposed && activeRef.current && followOutputRef.current)
+          terminal.scrollToBottom()
+      }
+      const fitTerminal = () => {
+        if (disposed || host.clientWidth === 0 || host.clientHeight === 0)
+          return
+        fitting = true
+        try {
+          fitAddon.fit()
+          followOutput()
+        } finally {
+          fitting = false
+        }
+      }
+      const scroll = terminal.onScroll(() => {
+        // Parsing output and reflow can move the viewport without user intent.
+        if (
+          followOutputRef.current ||
+          fitting ||
+          writesInFlight > 0 ||
+          queuedOutput.length > 0
+        )
+          return
+        followOutputRef.current =
+          terminal.buffer.active.viewportY >= terminal.buffer.active.baseY
+      })
+      const onWheel = (event: WheelEvent) => {
+        if (event.deltaY < 0) followOutputRef.current = false
+        else if (event.deltaY > 0)
+          requestAnimationFrame(() => {
+            if (!disposed && activeRef.current)
+              followOutputRef.current =
+                terminal.buffer.active.viewportY >= terminal.buffer.active.baseY
+          })
+      }
+      const onPointerDown = (event: PointerEvent) => {
+        const viewport = host.querySelector<HTMLElement>('.xterm-viewport')
+        if (!viewport || event.target !== viewport) return
+        const bounds = viewport.getBoundingClientRect()
+        if (event.clientX >= bounds.left + viewport.clientWidth)
+          followOutputRef.current = false
+      }
+      const onHistoryKey = (event: KeyboardEvent) => {
+        if (event.shiftKey && event.key === 'PageUp')
+          followOutputRef.current = false
+      }
+      host.addEventListener('wheel', onWheel, { passive: true })
+      host.addEventListener('pointerdown', onPointerDown)
+      host.addEventListener('keydown', onHistoryKey, true)
 
       const revealSettledCursor = () => {
         if (cursorSettleTimer !== null) window.clearTimeout(cursorSettleTimer)
@@ -228,6 +287,8 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
         if (!data) return
         writesInFlight += 1
         terminal.write(data, () => {
+          if (disposed) return
+          followOutput()
           writesInFlight -= 1
           if (
             writesInFlight === 0 &&
@@ -261,6 +322,7 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       void window.cmdWorkspace.terminal
         .snapshot({ terminalId })
         .then((snapshot) => {
+          if (disposed) return
           enqueueOutput(snapshot.output)
           lastSequence = snapshot.lastSequence
           snapshotLoaded = true
@@ -270,15 +332,14 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
               enqueueOutput(event.data)
             }
           }
-          requestAnimationFrame(() => {
-            fitAddon.fit()
-            if (activeRef.current) terminal.scrollToBottom()
-          })
+          requestAnimationFrame(fitTerminal)
         })
         .catch((error: unknown) =>
           onError(error instanceof Error ? error.message : String(error)),
         )
       const input = terminal.onData((data) => {
+        followOutputRef.current = true
+        followOutput()
         void window.cmdWorkspace.terminal
           .write({ terminalId, data })
           .catch((error: unknown) =>
@@ -286,18 +347,23 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
           )
       })
       const observer = new ResizeObserver(() => {
-        fitAddon.fit()
+        fitTerminal()
         void window.cmdWorkspace.terminal
           .resize({ terminalId, cols: terminal.cols, rows: terminal.rows })
           .catch(() => undefined)
       })
       observer.observe(host)
       return () => {
+        disposed = true
         if (feedbackTimerRef.current !== null)
           window.clearTimeout(feedbackTimerRef.current)
         unsubscribe()
         input.dispose()
         selection.dispose()
+        scroll.dispose()
+        host.removeEventListener('wheel', onWheel)
+        host.removeEventListener('pointerdown', onPointerDown)
+        host.removeEventListener('keydown', onHistoryKey, true)
         observer.disconnect()
         if (outputFrame !== null) window.cancelAnimationFrame(outputFrame)
         if (cursorSettleTimer !== null) window.clearTimeout(cursorSettleTimer)
