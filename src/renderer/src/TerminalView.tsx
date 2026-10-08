@@ -200,6 +200,8 @@ export const TerminalView = forwardRef<TerminalViewHandle, TerminalViewProps>(
       terminal.attachCustomKeyEventHandler((event) => {
         const action = terminalShortcutAction(event, terminal.hasSelection())
         if (!action) return true
+        // Returning false only skips xterm handling; cancel native clipboard actions too.
+        event.preventDefault()
         if (event.type === 'keydown') {
           if (action === 'copy') void copySelection()
           else if (action === 'paste') void pasteClipboard()

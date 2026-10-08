@@ -338,3 +338,16 @@ Acceptance checks:
 - [x] Delete the project transactionally and rely on existing foreign-key cascades for owned profiles, runs, tasks, and dependencies.
 - [x] Select a neighboring project after removal and keep unrelated project terminals running.
 - [x] Pass formatting, lint, typecheck, unit tests, database and terminal-manager smoke tests, production build, and diff review.
+
+## Completed fix: duplicate external clipboard paste
+
+Scope: cancel the browser default action for handled terminal shortcuts so one paste gesture reaches the existing clipboard/xterm input path once. Preserve native paste events, Ctrl+C without selection, terminal instances, and PTY ownership.
+
+Acceptance checks:
+
+- [x] Reproduce duplicate Ctrl+V with the real TerminalView/xterm and verify exactly one input after the fix.
+- [x] Verify Ctrl+Shift+V, Shift+Insert, right-click, native paste, consecutive intentional pastes, and clipboard error feedback.
+- [x] Verify Ctrl+C without selection and view activation retain terminal behavior and instance identity.
+- [x] Pass changed-file formatting, lint, TypeScript, production compilation, and diff review; record unavailable checks.
+
+Verification (2026-10-08): Playwright exercised the real TerminalView/xterm in Chromium with simulated preload IPC and an actual browser clipboard. The original handler sent two identical writes for one Ctrl+V; the fixed handler sent one. Ctrl+Shift+V, Shift+Insert, right-click, native paste, two intentional consecutive pastes, clipboard error feedback, Ctrl+C interruption, and retained xterm identity across activation all passed. Changed-file formatting, ESLint, both TypeScript checks, Electron TypeScript compilation, and Vite production build passed. Vitest exited 1 because the repository contains no test files; terminal-manager smoke scripts are also absent. A normal Windows Electron cross-application clipboard/ConPTY session was not exercised. Existing Vite chunk-size warning remains.
